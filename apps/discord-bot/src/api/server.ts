@@ -59,6 +59,74 @@ export async function startApiServer(client: BotClient) {
     res.json({ ok: true });
   });
 
+  // Create giveaway from dashboard
+  app.post("/giveaways", async (req, res) => {
+    try {
+      const { title, channelId, description, durationMinutes, winnersCount, requiredRoleId, minClaims, pingEveryone } = req.body;
+      const guild = await prisma.guild.findUnique({ where: { discordId: process.env.DISCORD_GUILD_ID! } });
+      if (!guild) return res.status(404).json({ error: "Guild not found" });
+
+      const endsAt = new Date(Date.now() + (durationMinutes ?? 60) * 60 * 1000);
+
+      const giveaway = await prisma.giveaway.create({
+        data: {
+          guildId: guild.id,
+          channelId,
+          title,
+          description: description ?? undefined,
+          winnersCount: winnersCount ?? 1,
+          requiredRoleId: requiredRoleId ?? undefined,
+          minClaims: minClaims ?? 0,
+          pingEveryone: Boolean(pingEveryone),
+          endsAt,
+          createdById: guild.id,
+          status: "ACTIVE",
+        },
+      });
+
+      const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = await import("discord.js");
+      const channel = client.channels.cache.get(channelId) as any;
+      if (channel) {
+        const embed = new EmbedBuilder()
+          .setTitle(`🎁 GIVEAWAY — ${title}`)
+          .setDescription(description ?? "Clique sur le bouton pour participer !")
+          .setColor(0x5865f2)
+          .addFields(
+            { name: "Gagnants", value: String(winnersCount ?? 1), inline: true },
+            { name: "Fin", value: `<t:${Math.floor(endsAt.getTime() / 1000)}:R>`, inline: true },
+          )
+          .setTimestamp(endsAt);
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`giveaway_enter:${giveaway.id}`)
+            .setLabel("🎉 Participer")
+            .setStyle(ButtonStyle.Primary),
+        );
+
+        const msg = await channel.send({ embeds: [embed], components: [row] });
+        await prisma.giveaway.update({ where: { id: giveaway.id }, data: { messageId: msg.id } });
+      }
+
+      res.json({ ok: true, id: giveaway.id });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Repost cart
+  app.post("/carts/:id/repost", async (req, res) => {
+    try {
+      const cart = await prisma.cart.findUnique({ where: { id: req.params.id }, include: { event: true } });
+      if (!cart) return res.status(404).json({ error: "Not found" });
+      const { repostCart } = await import("../services/cartService");
+      await repostCart(client, cart as any);
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   // Stats snapshot
   app.get("/stats", async (_req, res) => {
     const guild = await prisma.guild.findUnique({ where: { discordId: process.env.DISCORD_GUILD_ID! } });

@@ -160,16 +160,31 @@ export async function closeTicket(client: BotClient, ticketId: string, closedByI
   const ticket = await prisma.ticket.findUnique({ where: { id: ticketId }, include: { user: true } });
   if (!ticket || ticket.status !== "OPEN") return;
 
+  const { generateTranscript } = await import("./transcriptService");
+  const transcript = await generateTranscript(client, ticketId);
+
   await prisma.ticket.update({
     where: { id: ticketId },
-    data: { status: "CLOSED", closedById, closedAt: new Date() },
+    data: {
+      status: "CLOSED",
+      closedById,
+      closedAt: new Date(),
+      transcriptUrl: transcript ? `transcript_${ticketId}` : null,
+    },
   });
 
   const guild = client.guilds.cache.get(process.env.DISCORD_GUILD_ID!);
   if (guild) {
     const channel = guild.channels.cache.get(ticket.discordChannelId) as TextChannel;
     if (channel) {
-      await channel.send("🔒 Ce ticket a été fermé. Il sera archivé dans 24h.");
+      if (transcript) {
+        const { AttachmentBuilder } = await import("discord.js");
+        const buffer = Buffer.from(transcript, "utf-8");
+        const attachment = new AttachmentBuilder(buffer, { name: `transcript-${ticketId.slice(0, 8)}.txt` });
+        await channel.send({ content: "🔒 Ticket fermé. Transcript :", files: [attachment] });
+      } else {
+        await channel.send("🔒 Ce ticket a été fermé.");
+      }
       setTimeout(() => channel.delete().catch(() => {}), 24 * 60 * 60 * 1000);
     }
   }

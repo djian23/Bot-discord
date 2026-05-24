@@ -1,6 +1,7 @@
 import { Events, Interaction } from "discord.js";
 import { BotClient } from "../client";
 import { hasPermission } from "../utils/permissions";
+import { handleModal } from "../handlers/modalHandler";
 
 export const name = Events.InteractionCreate;
 export const once = false;
@@ -47,6 +48,18 @@ export async function execute(interaction: Interaction, client: BotClient) {
     } catch (err) {
       console.error(`[Button] Error in ${prefix}:`, err);
       await interaction.reply({ content: "❌ Une erreur est survenue.", ephemeral: true });
+    }
+    return;
+  }
+
+  if (interaction.isModalSubmit()) {
+    try {
+      await handleModal(interaction, client);
+    } catch (err) {
+      console.error("[Modal] Error:", err);
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: "❌ Une erreur est survenue.", ephemeral: true });
+      }
     }
     return;
   }
