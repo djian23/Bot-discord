@@ -114,6 +114,61 @@ export async function startApiServer(client: BotClient) {
     }
   });
 
+  // Giveaway end
+  app.post("/giveaways/:id/end", async (req, res) => {
+    try {
+      const giveaway = await prisma.giveaway.findUnique({
+        where: { id: req.params.id },
+        include: { entries: true },
+      });
+      if (!giveaway) return res.status(404).json({ error: "Not found" });
+
+      const shuffled = giveaway.entries.sort(() => Math.random() - 0.5);
+      const winners = shuffled.slice(0, giveaway.winnersCount);
+      for (const w of winners) {
+        await prisma.giveawayWinner.create({ data: { giveawayId: giveaway.id, userId: w.userId } }).catch(() => {});
+      }
+      await prisma.giveaway.update({ where: { id: giveaway.id }, data: { status: "ENDED", endedAt: new Date() } });
+
+      const channel = client.channels.cache.get(giveaway.channelId) as any;
+      if (channel && winners.length) {
+        const mentions = winners.map((w) => `<@${w.userId}>`).join(", ");
+        await channel.send(`🏆 **Giveaway terminé !** Félicitations : ${mentions}`);
+      }
+
+      res.json({ ok: true, winners: winners.length });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Giveaway reroll
+  app.post("/giveaways/:id/reroll", async (req, res) => {
+    try {
+      const giveaway = await prisma.giveaway.findUnique({
+        where: { id: req.params.id },
+        include: { entries: true },
+      });
+      if (!giveaway) return res.status(404).json({ error: "Not found" });
+
+      const shuffled = giveaway.entries.sort(() => Math.random() - 0.5);
+      const winners = shuffled.slice(0, giveaway.winnersCount);
+      for (const w of winners) {
+        await prisma.giveawayWinner.create({ data: { giveawayId: giveaway.id, userId: w.userId } }).catch(() => {});
+      }
+
+      const channel = client.channels.cache.get(giveaway.channelId) as any;
+      if (channel && winners.length) {
+        const mentions = winners.map((w) => `<@${w.userId}>`).join(", ");
+        await channel.send(`🔁 **Reroll !** Nouveaux gagnants : ${mentions}`);
+      }
+
+      res.json({ ok: true, winners: winners.length });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   // Repost cart
   app.post("/carts/:id/repost", async (req, res) => {
     try {

@@ -2,6 +2,7 @@ import { prisma } from "@discord-manager/database";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { InterestCheckActions } from "@/components/dashboard/actions/interest-check-actions";
 
 export default async function InterestChecksPage() {
   const checks = await prisma.interestCheck.findMany({
@@ -38,12 +39,15 @@ export default async function InterestChecksPage() {
                   <h3 className="font-semibold text-white">📊 {check.title}</h3>
                   {check.description && <p className="text-sm text-white/50 mt-0.5">{check.description}</p>}
                 </div>
-                <span className={cn(
-                  "text-xs px-2 py-0.5 rounded-full font-medium shrink-0",
-                  check.isActive ? "bg-discord-green/20 text-discord-green" : "bg-white/10 text-white/40"
-                )}>
-                  {check.isActive ? "Actif" : "Fermé"}
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={cn(
+                    "text-xs px-2 py-0.5 rounded-full font-medium",
+                    check.isActive ? "bg-discord-green/20 text-discord-green" : "bg-white/10 text-white/40"
+                  )}>
+                    {check.isActive ? "Actif" : "Fermé"}
+                  </span>
+                  <InterestCheckActions checkId={check.id} isActive={check.isActive} />
+                </div>
               </div>
 
               <div className="space-y-2">

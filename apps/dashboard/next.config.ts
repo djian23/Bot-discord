@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   transpilePackages: ["@discord-manager/database", "@discord-manager/shared"],
   images: {
     remotePatterns: [

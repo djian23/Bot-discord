@@ -131,6 +131,7 @@ model User {
   tickets         Ticket[]
   staffNotes      StaffNote[]
   giveawayEntries GiveawayEntry[]
+  giveawayWins    GiveawayWinner[]
   interestVotes   InterestVote[]
   invitesSent     Invite[]        @relation("InviterRelation")
   invitedBy       Invite?         @relation("InviteeRelation")
@@ -431,6 +432,7 @@ model GiveawayWinner {
   createdAt  DateTime @default(now())
 
   giveaway Giveaway @relation(fields: [giveawayId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("giveaway_winners")
 }
