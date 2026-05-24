@@ -1,0 +1,586 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────
+
+enum UserRole {
+  USER
+  VIP
+  STAFF
+  ADMIN
+  BOSS
+}
+
+enum EventStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum EventMode {
+  PUBLIC
+  VIP
+  PRIVATE
+}
+
+enum CartStatus {
+  AVAILABLE
+  CLAIMED
+  PAID
+  EXPIRED
+  CANCELLED
+  SOLD_OUT
+}
+
+enum ClaimStatus {
+  PENDING
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum TicketStatus {
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+enum GiveawayStatus {
+  ACTIVE
+  ENDED
+  CANCELLED
+}
+
+enum AnnouncementStyle {
+  HYPE
+  PRO
+  LUXE
+  MINIMAL
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  SCHEDULED
+  SENT
+  CANCELLED
+}
+
+enum LogAction {
+  CART_RECEIVED
+  CART_REPOSTED
+  CART_CLAIMED
+  CART_PAID
+  CART_EXPIRED
+  CART_CANCELLED
+  TICKET_CREATED
+  TICKET_CLOSED
+  USER_BLACKLISTED
+  USER_UNBLACKLISTED
+  GIVEAWAY_CREATED
+  GIVEAWAY_ENDED
+  ROLE_ASSIGNED
+  ROLE_REMOVED
+  INVITE_DETECTED
+  WEBHOOK_ERROR
+  ERROR
+}
+
+enum RolePanelType {
+  BUTTON
+  SELECT_MENU
+}
+
+enum InviteStatus {
+  VALID
+  FAKE
+  LEFT
+}
+
+// ─────────────────────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id              String   @id @default(cuid())
+  discordId       String   @unique
+  username        String
+  discriminator   String   @default("0")
+  avatar          String?
+  role            UserRole @default(USER)
+  isBlacklisted   Boolean  @default(false)
+  blacklistReason String?
+  claimsCount     Int      @default(0)
+  paidCount       Int      @default(0)
+  cancelledCount  Int      @default(0)
+  invitesCount    Int      @default(0)
+  maxClaimsPerDay Int      @default(5)
+  lastClaimAt     DateTime?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  claims          Claim[]
+  tickets         Ticket[]
+  staffNotes      StaffNote[]
+  giveawayEntries GiveawayEntry[]
+  interestVotes   InterestVote[]
+  invitesSent     Invite[]        @relation("InviterRelation")
+  invitedBy       Invite?         @relation("InviteeRelation")
+  logsActor       Log[]           @relation("LogActor")
+  logsTarget      Log[]           @relation("LogTarget")
+  closedTickets   Ticket[]        @relation("TicketCloser")
+  sessions        Session[]
+
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ─────────────────────────────────────────────────────────────
+// GUILD / SETTINGS
+// ─────────────────────────────────────────────────────────────
+
+model Guild {
+  id                    String   @id @default(cuid())
+  discordId             String   @unique
+  name                  String
+  icon                  String?
+  bossRoleId            String?
+  adminRoleId           String?
+  staffRoleId           String?
+  vipRoleId             String?
+  successLogsChannelId  String?
+  errorLogsChannelId    String?
+  staffLogsChannelId    String?
+  defaultClaimsPerDay   Int      @default(5)
+  claimCooldownSeconds  Int      @default(0)
+  blockNewAccounts      Boolean  @default(false)
+  minAccountAgeDays     Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  events   Event[]
+  settings GuildSettings?
+
+  @@map("guilds")
+}
+
+model GuildSettings {
+  id                    String  @id @default(cuid())
+  guildId               String  @unique
+  ticketCategoryId      String?
+  ticketAutoCloseHours  Int     @default(48)
+  announcementChannelId String?
+  inviteLogChannelId    String?
+  openaiModel           String  @default("gpt-4o-mini")
+
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@map("guild_settings")
+}
+
+// ─────────────────────────────────────────────────────────────
+// EVENT
+// ─────────────────────────────────────────────────────────────
+
+model Event {
+  id               String      @id @default(cuid())
+  guildId          String
+  name             String
+  slug             String
+  site             String?
+  image            String?
+  pasAmount        Float?
+  pasText          String?
+  publicChannelId  String?
+  sourceChannelId  String?
+  logsChannelId    String?
+  privateChannelId String?
+  webhookId        String?
+  webhookUrl       String?
+  embedColor       String      @default("#5865F2")
+  embedTemplate    Json?
+  mode             EventMode   @default(PUBLIC)
+  status           EventStatus @default(ACTIVE)
+  allowedRoleId    String?
+  defaultExpiresIn Int?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  guild  Guild  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  carts  Cart[]
+
+  @@unique([guildId, slug])
+  @@map("events")
+}
+
+// ─────────────────────────────────────────────────────────────
+// CART
+// ─────────────────────────────────────────────────────────────
+
+model Cart {
+  id              String     @id @default(cuid())
+  eventId         String
+  cartExternalId  String?
+  title           String
+  site            String?
+  price           Float?
+  quantity        Int        @default(1)
+  section         String?
+  row             String?
+  category        String?
+  image           String?
+  checkoutLink    String?
+  expirationAt    DateTime?
+  status          CartStatus @default(AVAILABLE)
+  sourceChannelId String?
+  publicMessageId String?
+  sourceMessageId String?
+  claimedById     String?
+  ticketId        String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  event  Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  claims Claim[]
+
+  @@map("carts")
+}
+
+// ─────────────────────────────────────────────────────────────
+// CLAIM
+// ─────────────────────────────────────────────────────────────
+
+model Claim {
+  id        String      @id @default(cuid())
+  cartId    String
+  userId    String
+  ticketId  String?
+  status    ClaimStatus @default(PENDING)
+  paidAt    DateTime?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticket Ticket? @relation(fields: [ticketId], references: [id])
+
+  @@map("claims")
+}
+
+// ─────────────────────────────────────────────────────────────
+// TICKET
+// ─────────────────────────────────────────────────────────────
+
+model Ticket {
+  id               String       @id @default(cuid())
+  userId           String
+  discordChannelId String       @unique
+  status           TicketStatus @default(OPEN)
+  transcriptUrl    String?
+  closedById       String?
+  closedAt         DateTime?
+  lastActivityAt   DateTime     @default(now())
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  closedBy  User?       @relation("TicketCloser", fields: [closedById], references: [id])
+  claims    Claim[]
+  messages  TicketLog[]
+  staffNotes StaffNote[]
+
+  @@map("tickets")
+}
+
+model TicketLog {
+  id        String   @id @default(cuid())
+  ticketId  String
+  authorId  String
+  content   String
+  isStaff   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@map("ticket_logs")
+}
+
+model StaffNote {
+  id        String   @id @default(cuid())
+  userId    String
+  ticketId  String?
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticket Ticket? @relation(fields: [ticketId], references: [id])
+
+  @@map("staff_notes")
+}
+
+// ─────────────────────────────────────────────────────────────
+// ROLE PANEL
+// ─────────────────────────────────────────────────────────────
+
+model RolePanel {
+  id         String        @id @default(cuid())
+  guildId    String
+  name       String
+  channelId  String
+  messageId  String?
+  type       RolePanelType @default(BUTTON)
+  isActive   Boolean       @default(true)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  options RoleOption[]
+
+  @@map("role_panels")
+}
+
+model RoleOption {
+  id            String   @id @default(cuid())
+  panelId       String
+  roleId        String
+  label         String
+  emoji         String?
+  description   String?
+  minClaims     Int?
+  minPaid       Int?
+  minInvites    Int?
+  requiredRoleId String?
+  manualOnly    Boolean  @default(false)
+  style         String   @default("PRIMARY")
+  createdAt     DateTime @default(now())
+
+  panel RolePanel @relation(fields: [panelId], references: [id], onDelete: Cascade)
+
+  @@map("role_options")
+}
+
+// ─────────────────────────────────────────────────────────────
+// GIVEAWAY
+// ─────────────────────────────────────────────────────────────
+
+model Giveaway {
+  id              String         @id @default(cuid())
+  guildId         String
+  channelId       String
+  messageId       String?
+  title           String
+  description     String?
+  image           String?
+  winnersCount    Int            @default(1)
+  requiredRoleId  String?
+  minClaims       Int            @default(0)
+  minInvites      Int            @default(0)
+  pingEveryone    Boolean        @default(false)
+  pingRoleId      String?
+  status          GiveawayStatus @default(ACTIVE)
+  endsAt          DateTime
+  endedAt         DateTime?
+  createdById     String
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  entries GiveawayEntry[]
+  winners GiveawayWinner[]
+
+  @@map("giveaways")
+}
+
+model GiveawayEntry {
+  id          String   @id @default(cuid())
+  giveawayId  String
+  userId      String
+  createdAt   DateTime @default(now())
+
+  giveaway Giveaway @relation(fields: [giveawayId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([giveawayId, userId])
+  @@map("giveaway_entries")
+}
+
+model GiveawayWinner {
+  id         String   @id @default(cuid())
+  giveawayId String
+  userId     String
+  dmSent     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  giveaway Giveaway @relation(fields: [giveawayId], references: [id], onDelete: Cascade)
+
+  @@map("giveaway_winners")
+}
+
+// ─────────────────────────────────────────────────────────────
+// INTEREST CHECK
+// ─────────────────────────────────────────────────────────────
+
+model InterestCheck {
+  id             String   @id @default(cuid())
+  guildId        String
+  channelId      String
+  messageId      String?
+  title          String
+  description    String?
+  image          String?
+  requiredRoleId String?
+  isActive       Boolean  @default(true)
+  createdById    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  buttons InterestButton[]
+  votes   InterestVote[]
+
+  @@map("interest_checks")
+}
+
+model InterestButton {
+  id               String @id @default(cuid())
+  interestCheckId  String
+  label            String
+  emoji            String?
+  customId         String
+  style            String @default("PRIMARY")
+  position         Int    @default(0)
+
+  interestCheck InterestCheck  @relation(fields: [interestCheckId], references: [id], onDelete: Cascade)
+  votes         InterestVote[]
+
+  @@map("interest_buttons")
+}
+
+model InterestVote {
+  id               String   @id @default(cuid())
+  interestCheckId  String
+  buttonId         String
+  userId           String
+  createdAt        DateTime @default(now())
+
+  interestCheck InterestCheck  @relation(fields: [interestCheckId], references: [id], onDelete: Cascade)
+  button        InterestButton @relation(fields: [buttonId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([interestCheckId, userId])
+  @@map("interest_votes")
+}
+
+// ─────────────────────────────────────────────────────────────
+// INVITE
+// ─────────────────────────────────────────────────────────────
+
+model Invite {
+  id          String       @id @default(cuid())
+  guildId     String
+  inviterId   String
+  inviteeId   String       @unique
+  code        String
+  status      InviteStatus @default(VALID)
+  leftAt      DateTime?
+  rejoinedAt  DateTime?
+  createdAt   DateTime     @default(now())
+
+  inviter User @relation("InviterRelation", fields: [inviterId], references: [id])
+  invitee User @relation("InviteeRelation", fields: [inviteeId], references: [id])
+
+  @@map("invites")
+}
+
+// ─────────────────────────────────────────────────────────────
+// ANNOUNCEMENT
+// ─────────────────────────────────────────────────────────────
+
+model Announcement {
+  id            String             @id @default(cuid())
+  guildId       String
+  channelId     String
+  messageId     String?
+  title         String?
+  rawContent    String
+  finalContent  String?
+  image         String?
+  embedColor    String?
+  pingType      String?
+  pingTargetId  String?
+  style         AnnouncementStyle?
+  isAiEnhanced  Boolean            @default(false)
+  status        AnnouncementStatus @default(DRAFT)
+  scheduledAt   DateTime?
+  sentAt        DateTime?
+  createdById   String
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@map("announcements")
+}
+
+// ─────────────────────────────────────────────────────────────
+// LOG
+// ─────────────────────────────────────────────────────────────
+
+model Log {
+  id         String    @id @default(cuid())
+  guildId    String
+  action     LogAction
+  actorId    String?
+  targetId   String?
+  cartId     String?
+  ticketId   String?
+  eventId    String?
+  metadata   Json?
+  message    String?
+  createdAt  DateTime  @default(now())
+
+  actor  User? @relation("LogActor", fields: [actorId], references: [id])
+  target User? @relation("LogTarget", fields: [targetId], references: [id])
+
+  @@index([guildId, action])
+  @@index([guildId, createdAt])
+  @@map("logs")
+}
+
+// ─────────────────────────────────────────────────────────────
+// ANALYTICS (pre-computed snapshots)
+// ─────────────────────────────────────────────────────────────
+
+model DailyStats {
+  id              String   @id @default(cuid())
+  guildId         String
+  date            DateTime @db.Date
+  cartsReceived   Int      @default(0)
+  cartsClaimed    Int      @default(0)
+  cartsPaid       Int      @default(0)
+  cartsExpired    Int      @default(0)
+  cartsCancelled  Int      @default(0)
+  ticketsOpened   Int      @default(0)
+  ticketsClosed   Int      @default(0)
+  newUsers        Int      @default(0)
+  avgClaimTimeMs  Int?
+
+  @@unique([guildId, date])
+  @@map("daily_stats")
+}

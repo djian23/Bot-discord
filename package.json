@@ -1,0 +1,30 @@
+{
+  "name": "discord-manager",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "start": "turbo run start",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "db:generate": "turbo run db:generate --filter=@discord-manager/database",
+    "db:migrate": "turbo run db:migrate --filter=@discord-manager/database",
+    "db:studio": "turbo run db:studio --filter=@discord-manager/database",
+    "db:seed": "turbo run db:seed --filter=@discord-manager/database"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0",
+    "prettier": "^3.2.0",
+    "eslint": "^8.57.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
