@@ -1,5 +1,6 @@
 import { prisma } from "@discord-manager/database";
 import { AnalyticsCharts } from "@/components/dashboard/analytics-charts";
+import { ExportButton } from "@/components/ui/export-button";
 
 async function getAnalyticsData() {
   const thirtyDaysAgo = new Date();
@@ -44,7 +45,10 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-white">Analytics</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-white">Analytics</h1>
+        <ExportButton href="/api/export/analytics" label="Exporter 90j CSV" />
+      </div>
       <AnalyticsCharts data={data} />
     </div>
   );

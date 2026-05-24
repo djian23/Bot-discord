@@ -2,6 +2,7 @@ import { prisma } from "@discord-manager/database";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { ExportButton } from "@/components/ui/export-button";
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: "bg-discord-yellow/20 text-discord-yellow",
@@ -30,9 +31,12 @@ export default async function ClaimsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Claims</h1>
-        <p className="text-sm text-white/50 mt-1">{stats.total} claims chargés</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Claims</h1>
+          <p className="text-sm text-white/50 mt-1">{stats.total} claims chargés</p>
+        </div>
+        <ExportButton href="/api/export/claims" />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

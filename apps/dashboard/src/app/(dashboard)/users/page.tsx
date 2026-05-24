@@ -2,6 +2,7 @@ import { prisma } from "@discord-manager/database";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export default async function UsersPage() {
   const users = await prisma.user.findMany({
@@ -29,8 +30,10 @@ export default async function UsersPage() {
             {users.map((user) => (
               <tr key={user.id} className="hover:bg-white/2">
                 <td className="px-4 py-3">
-                  <div className="font-medium text-white">{user.username}</div>
-                  <div className="text-xs text-white/30 font-mono">{user.discordId}</div>
+                  <Link href={`/users/${user.id}`} className="group">
+                    <div className="font-medium text-white group-hover:text-discord-blurple transition-colors">{user.username}</div>
+                    <div className="text-xs text-white/30 font-mono">{user.discordId}</div>
+                  </Link>
                 </td>
                 <td className="px-4 py-3">
                   <span className="text-xs bg-discord-blurple/20 text-discord-blurple px-2 py-0.5 rounded-full">{user.role}</span>

@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { Copy, ExternalLink } from "lucide-react";
+import Link from "next/link";
 
 interface EventsGridProps {
   events: any[];
@@ -30,7 +31,7 @@ export function EventsGrid({ events }: EventsGridProps) {
         >
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h3 className="font-semibold text-white">{event.name}</h3>
+              <Link href={`/events/${event.id}`} className="font-semibold text-white hover:text-discord-blurple transition-colors block">{event.name}</Link>
               <p className="text-xs text-white/40 mt-0.5">/{event.slug}</p>
             </div>
             <div className="flex gap-2 shrink-0">

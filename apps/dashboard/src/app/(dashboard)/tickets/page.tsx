@@ -2,6 +2,7 @@ import { prisma } from "@discord-manager/database";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export default async function TicketsPage() {
   const tickets = await prisma.ticket.findMany({
@@ -31,8 +32,16 @@ export default async function TicketsPage() {
           <tbody className="divide-y divide-white/5">
             {tickets.map((ticket) => (
               <tr key={ticket.id} className="hover:bg-white/2">
-                <td className="px-4 py-3 font-mono text-white/40 text-xs">#{ticket.id.slice(0, 8)}</td>
-                <td className="px-4 py-3 text-white">{ticket.user.username}</td>
+                <td className="px-4 py-3 font-mono text-white/40 text-xs">
+                  <Link href={`/tickets/${ticket.id}`} className="hover:text-discord-blurple transition-colors">
+                    #{ticket.id.slice(0, 8)}
+                  </Link>
+                </td>
+                <td className="px-4 py-3">
+                  <Link href={`/users/${ticket.user.id}`} className="text-white hover:text-discord-blurple transition-colors">
+                    {ticket.user.username}
+                  </Link>
+                </td>
                 <td className="px-4 py-3 text-white/70">{ticket._count.claims}</td>
                 <td className="px-4 py-3">
                   <span className={cn(

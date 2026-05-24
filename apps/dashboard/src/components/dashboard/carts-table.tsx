@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { CART_STATUS_LABELS } from "@discord-manager/shared";
+import { CartRowActions } from "./cart-row-actions";
 
 const STATUS_COLORS: Record<string, string> = {
   AVAILABLE: "bg-discord-green/20 text-discord-green",
@@ -22,7 +24,9 @@ interface CartsTableProps {
 
 export function CartsTable({ carts, userRole }: CartsTableProps) {
   const [filter, setFilter] = useState<string>("ALL");
+  const router = useRouter();
   const canSeeCheckout = ["BOSS", "ADMIN"].includes(userRole);
+  const refresh = useCallback(() => router.refresh(), [router]);
 
   const filtered = filter === "ALL" ? carts : carts.filter((c) => c.status === filter);
 
@@ -59,6 +63,7 @@ export function CartsTable({ carts, userRole }: CartsTableProps) {
               <th className="text-left px-4 py-3">Expiration</th>
               {canSeeCheckout && <th className="text-left px-4 py-3">Checkout</th>}
               <th className="text-left px-4 py-3">Créé</th>
+              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -99,6 +104,9 @@ export function CartsTable({ carts, userRole }: CartsTableProps) {
                 )}
                 <td className="px-4 py-3 text-white/30 text-xs">
                   {formatDistanceToNow(new Date(cart.createdAt), { addSuffix: true, locale: fr })}
+                </td>
+                <td className="px-4 py-3">
+                  <CartRowActions cartId={cart.id} status={cart.status} onRefresh={refresh} />
                 </td>
               </tr>
             ))}

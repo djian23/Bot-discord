@@ -1,0 +1,33 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@discord-manager/database";
+
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions);
+  if (!["BOSS", "ADMIN"].includes((session?.user as any)?.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const body = await req.json();
+  const event = await prisma.event.findUnique({ where: { id: params.id } });
+  if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (body.action === "toggle") {
+    const newStatus = event.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+    await prisma.event.update({ where: { id: params.id }, data: { status: newStatus } });
+    return NextResponse.json({ ok: true, status: newStatus });
+  }
+
+  return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+}
+
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions);
+  if (!["BOSS", "ADMIN"].includes((session?.user as any)?.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  await prisma.event.delete({ where: { id: params.id } });
+  return NextResponse.json({ ok: true });
+}
