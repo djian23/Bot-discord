@@ -32,6 +32,7 @@ enum EventMode {
 }
 
 enum CartStatus {
+  DRAFT
   AVAILABLE
   CLAIMED
   PAID

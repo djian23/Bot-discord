@@ -1,6 +1,7 @@
-import { ModalSubmitInteraction } from "discord.js";
+import { EmbedBuilder, ModalSubmitInteraction } from "discord.js";
 import { prisma } from "@discord-manager/database";
 import { BotClient } from "../client";
+import { buildDraftEmbed } from "../events/messageCreate";
 
 export async function handleModal(interaction: ModalSubmitInteraction, _client: BotClient) {
   const [prefix, ...args] = interaction.customId.split(":");
@@ -42,6 +43,40 @@ export async function handleModal(interaction: ModalSubmitInteraction, _client: 
     }
 
     await interaction.editReply("✅ Note ajoutée.");
+    return;
+  }
+
+  if (prefix === "modal_cart_edit") {
+    await interaction.deferReply({ ephemeral: true });
+    const cartId = args[0];
+
+    const title = interaction.fields.getTextInputValue("title").trim();
+    const priceRaw = interaction.fields.getTextInputValue("price").trim();
+    const quantityRaw = interaction.fields.getTextInputValue("quantity").trim();
+    const category = interaction.fields.getTextInputValue("category").trim() || null;
+    const checkoutLink = interaction.fields.getTextInputValue("checkout_link").trim() || null;
+
+    const price = priceRaw ? parseFloat(priceRaw.replace(",", ".")) : null;
+    const quantity = parseInt(quantityRaw) || 1;
+
+    const cart = await prisma.cart.update({
+      where: { id: cartId },
+      data: { title, price: isNaN(price as number) ? null : price, quantity, category, checkoutLink },
+      include: { event: true },
+    });
+
+    // Refresh the source preview embed with updated values
+    const color = parseInt((cart.event.embedColor ?? "#5865F2").replace("#", ""), 16);
+    const newEmbed = buildDraftEmbed(cart, cart.event, color);
+
+    try {
+      const sourceMsg = interaction.message;
+      if (sourceMsg) {
+        await sourceMsg.edit({ embeds: [newEmbed] });
+      }
+    } catch {}
+
+    await interaction.editReply("✅ Cart mis à jour.");
     return;
   }
 }
