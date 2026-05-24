@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -31,20 +31,22 @@ interface CartsTableProps {
 
 export function CartsTable({ carts, userRole, events, currentStatus, currentEventId, page, totalPages, total }: CartsTableProps) {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const canSeeCheckout = ["BOSS", "ADMIN"].includes(userRole);
 
   const refresh = useCallback(() => router.refresh(), [router]);
 
-  function navigate(params: Record<string, string | undefined>, keepPage = false) {
-    const sp = new URLSearchParams(searchParams.toString());
-    for (const [k, v] of Object.entries(params)) {
-      if (v === undefined || v === "") sp.delete(k);
-      else sp.set(k, v);
-    }
-    if (!keepPage) sp.delete("page");
-    router.push(`${pathname}?${sp.toString()}`);
+  function buildUrl(overrides: { status?: string; event?: string; page?: number }) {
+    const params = new URLSearchParams();
+    const status = overrides.status !== undefined ? overrides.status : currentStatus;
+    const event = overrides.event !== undefined ? overrides.event : (currentEventId ?? "");
+    const p = overrides.page ?? 1;
+
+    if (status && status !== "ALL") params.set("status", status);
+    if (event) params.set("event", event);
+    if (p > 1) params.set("page", String(p));
+
+    const qs = params.toString();
+    return `/carts${qs ? `?${qs}` : ""}`;
   }
 
   return (
@@ -55,7 +57,7 @@ export function CartsTable({ carts, userRole, events, currentStatus, currentEven
           {["ALL", "AVAILABLE", "CLAIMED", "PAID", "EXPIRED", "CANCELLED"].map((s) => (
             <button
               key={s}
-              onClick={() => navigate({ status: s === "ALL" ? undefined : s })}
+              onClick={() => router.push(buildUrl({ status: s, page: 1 }))}
               className={cn(
                 "text-xs px-3 py-1.5 rounded-full transition-colors font-medium",
                 currentStatus === s || (s === "ALL" && !currentStatus)
@@ -70,7 +72,7 @@ export function CartsTable({ carts, userRole, events, currentStatus, currentEven
 
         <select
           value={currentEventId ?? ""}
-          onChange={(e) => navigate({ event: e.target.value || undefined })}
+          onChange={(e) => router.push(buildUrl({ event: e.target.value, page: 1 }))}
           className="ml-auto text-xs bg-discord-dark border border-white/10 text-white/70 rounded-lg px-3 py-1.5 focus:outline-none focus:border-discord-blurple"
         >
           <option value="">Tous les events</option>
@@ -145,14 +147,14 @@ export function CartsTable({ carts, userRole, events, currentStatus, currentEven
             <span className="text-xs text-white/40">{total} résultats · page {page}/{totalPages}</span>
             <div className="flex gap-2">
               <button
-                onClick={() => navigate({ page: String(page - 1) }, true)}
+                onClick={() => router.push(buildUrl({ page: page - 1 }))}
                 disabled={page <= 1}
                 className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 disabled:opacity-30 transition-colors"
               >
                 <ChevronLeft className="size-4" />
               </button>
               <button
-                onClick={() => navigate({ page: String(page + 1) }, true)}
+                onClick={() => router.push(buildUrl({ page: page + 1 }))}
                 disabled={page >= totalPages}
                 className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 disabled:opacity-30 transition-colors"
               >
