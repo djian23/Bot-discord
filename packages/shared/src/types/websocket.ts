@@ -3,9 +3,9 @@ export type WsEventType =
   | "cart:claimed"
   | "cart:paid"
   | "cart:expired"
+  | "cart:cancelled"
   | "ticket:created"
   | "ticket:closed"
-  | "log:new"
   | "stats:update"
   | "bot:status";
 

@@ -154,6 +154,12 @@ async function sendCartToTicket(channel: TextChannel, cart: CartWithEvent, membe
   );
 
   await channel.send({ content: `${member}`, embeds: [embed], components: [row] });
+
+  // Update lastActivityAt so the auto-close cron has accurate data
+  const ticket = await prisma.ticket.findFirst({ where: { discordChannelId: channel.id } });
+  if (ticket) {
+    await prisma.ticket.update({ where: { id: ticket.id }, data: { lastActivityAt: new Date() } });
+  }
 }
 
 export async function closeTicket(client: BotClient, ticketId: string, closedById: string) {

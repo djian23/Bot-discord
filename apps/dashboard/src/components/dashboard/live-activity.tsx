@@ -37,7 +37,7 @@ export function LiveActivity({ initialLogs }: LiveActivityProps) {
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    const wsUrl = process.env.NEXT_PUBLIC_BOT_WS_URL ?? "http://localhost:4000";
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:4000";
     const socket = io(wsUrl, { transports: ["websocket"] });
     socketRef.current = socket;
 

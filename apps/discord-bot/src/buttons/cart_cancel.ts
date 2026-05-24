@@ -37,6 +37,6 @@ export async function execute(interaction: ButtonInteraction, _client: BotClient
     },
   });
 
-  emitWsEvent({ type: "cart:expired", payload: { cartId }, timestamp: new Date().toISOString() });
+  emitWsEvent({ type: "cart:cancelled", payload: { cartId }, timestamp: new Date().toISOString() });
   await interaction.editReply("✅ Cart annulé.");
 }

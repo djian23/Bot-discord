@@ -3,6 +3,26 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@discord-manager/database";
 
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions);
+  if (!["BOSS", "ADMIN", "STAFF"].includes((session?.user as any)?.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: params.id },
+    include: {
+      claims: { orderBy: { createdAt: "desc" }, take: 20, include: { cart: { include: { event: { select: { name: true } } } } } },
+      tickets: { orderBy: { createdAt: "desc" }, take: 10 },
+      staffNotes: { orderBy: { createdAt: "desc" }, include: { author: { select: { username: true } } } },
+      invitesSent: { orderBy: { createdAt: "desc" }, take: 20, include: { invitee: { select: { username: true } } } },
+    },
+  });
+
+  if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(user);
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!["BOSS", "ADMIN", "STAFF"].includes((session?.user as any)?.role)) {

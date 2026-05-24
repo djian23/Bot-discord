@@ -23,7 +23,7 @@ export function LiveOverview({ initial }: LiveOverviewProps) {
   const { toast } = useToast();
 
   useEffect(() => {
-    const wsUrl = process.env.NEXT_PUBLIC_BOT_WS_URL ?? "http://localhost:4000";
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:4000";
     const socket = io(wsUrl, { transports: ["websocket"], reconnectionDelay: 3000 });
     socketRef.current = socket;
 
@@ -42,12 +42,20 @@ export function LiveOverview({ initial }: LiveOverviewProps) {
       toast(`Cart marqué payé`, "success");
     });
 
+    socket.on("cart:cancelled", () => {
+      toast("Cart annulé", "warning");
+    });
+
     socket.on("ticket:created", () => {
       setStats((s) => ({ ...s, openTickets: s.openTickets + 1 }));
     });
 
     socket.on("ticket:closed", () => {
       setStats((s) => ({ ...s, openTickets: Math.max(0, s.openTickets - 1) }));
+    });
+
+    socket.on("connect_error", () => {
+      toast("Bot WebSocket déconnecté", "error");
     });
 
     return () => {

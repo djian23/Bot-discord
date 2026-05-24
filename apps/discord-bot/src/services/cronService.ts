@@ -16,11 +16,12 @@ export function startCronJobs(client: BotClient) {
 
   // Auto-close inactive tickets every hour
   cron.schedule("0 * * * *", async () => {
-    const guilds = await prisma.guild.findMany();
+    const guilds = await prisma.guild.findMany({ include: { settings: true } });
     for (const guild of guilds) {
-      const hoursAgo = new Date(Date.now() - (guild.claimCooldownSeconds || 172800) * 1000);
+      const autoCloseHours = guild.settings?.ticketAutoCloseHours ?? 48;
+      const cutoff = new Date(Date.now() - autoCloseHours * 60 * 60 * 1000);
       const staleTickets = await prisma.ticket.findMany({
-        where: { status: "OPEN", lastActivityAt: { lte: hoursAgo } },
+        where: { status: "OPEN", lastActivityAt: { lte: cutoff } },
       });
       for (const ticket of staleTickets) {
         await closeTicket(client, ticket.id, "system");

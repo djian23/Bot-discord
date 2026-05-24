@@ -53,7 +53,7 @@ export async function repostCart(client: BotClient, cart: CartWithEvent) {
 
   await prisma.cart.update({
     where: { id: cart.id },
-    data: { publicMessageId: msg.id },
+    data: { publicMessageId: msg.id, status: "AVAILABLE", claimedById: null },
   });
 
   await prisma.log.create({

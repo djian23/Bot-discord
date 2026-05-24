@@ -11,4 +11,7 @@ prisma/migrations/
 uploads/
 logs/
 *.log
+# Exceptions — Next.js pages and API routes named "logs"
+!apps/**/logs/
+!apps/**/logs/**
 .DS_Store
