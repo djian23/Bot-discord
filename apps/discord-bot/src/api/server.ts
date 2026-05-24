@@ -250,6 +250,21 @@ export async function startApiServer(client: BotClient) {
     }
   });
 
+  // WTS post
+  app.post("/wts/post", async (req, res) => {
+    try {
+      const { channelId, content, mentionRoleId, imageUrl } = req.body;
+      const channel = client.channels.cache.get(channelId) as any;
+      if (!channel) return res.status(404).json({ error: "Channel not found" });
+      const prefix = mentionRoleId ? `<@&${mentionRoleId}>\n` : "";
+      const files = imageUrl ? [{ attachment: imageUrl }] : [];
+      const msg = await channel.send({ content: prefix + content, files });
+      res.json({ ok: true, messageId: msg.id });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   const port = parseInt(process.env.BOT_API_PORT ?? "4000");
   httpServer.listen(port, () => console.log(`[API] Server running on port ${port}`));
 }

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, CalendarDays, ShoppingCart, CheckCircle,
   Ticket, Users, Shield, Gift, Star, Link2, Megaphone,
-  BarChart2, Settings, ScrollText, Server,
+  BarChart2, Settings, ScrollText, Server, Zap,
 } from "lucide-react";
 
 const NAV = [
@@ -21,6 +21,7 @@ const NAV = [
   { href: "/interest-checks", label: "Interest Checks", icon: Star },
   { href: "/invites", label: "Invites", icon: Link2 },
   { href: "/announcements", label: "Annonces", icon: Megaphone },
+  { href: "/wts", label: "WTS Generator", icon: Zap },
   { href: "/analytics", label: "Analytics", icon: BarChart2 },
   { href: "/logs", label: "Logs", icon: ScrollText },
   { href: "/server-setup", label: "Server Setup", icon: Server },
