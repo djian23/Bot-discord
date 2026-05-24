@@ -6,7 +6,9 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "deploy:commands": "ts-node src/deploy-commands.ts"
+    "deploy:commands": "ts-node src/deploy-commands.ts",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@discord-manager/database": "*",
@@ -25,6 +27,18 @@
     "@types/express": "^4.17.21",
     "@types/node-cron": "^3.0.11",
     "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0"
+    "ts-node-dev": "^2.0.0",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.12",
+    "ts-jest": "^29.1.3"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": ["**/__tests__/**/*.test.ts"],
+    "moduleNameMapper": {
+      "@discord-manager/shared": "<rootDir>/../../packages/shared/src/index.ts",
+      "@discord-manager/database": "<rootDir>/../../packages/database/src/index.ts"
+    }
   }
 }

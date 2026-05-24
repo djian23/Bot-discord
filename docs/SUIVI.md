@@ -1,6 +1,6 @@
 # Suivi du Projet — Discord Manager
 
-> Dernière mise à jour : 2026-05-24
+> Dernière mise à jour : 2026-05-24 (session 3)
 
 ---
 
@@ -40,7 +40,13 @@
 | Dashboard — Logs | ✅ Complet | historique 200 logs |
 | Dashboard — Settings | ✅ Complet | form complet |
 | API Interne Bot ↔ Dashboard | ✅ Complet | Express + WebSocket |
-| Déploiement Railway / VPS | ⏳ À faire | voir section ci-dessous |
+| Bot — /myclaims | ✅ Complet | embed claims récents + stats |
+| Bot — /setup | ✅ Complet | rôles, salons, limites, info |
+| Dashboard — Detail pages | ✅ Complet | /users/[id], /tickets/[id], /events/[id] |
+| Dashboard — Temps réel | ✅ Complet | LiveOverview, LiveActivity, Socket.io |
+| Dashboard — Exports CSV | ✅ Complet | claims + analytics 90j |
+| Tests unitaires | ✅ Complet | cartParser + claimValidation (Jest) |
+| Déploiement Railway / VPS | ✅ Complet | Dockerfile, docker-compose, railway.toml |
 
 ---
 
@@ -71,6 +77,11 @@
 | `/role publish` | Admin | Publie le panel dans Discord |
 | `/role list` | Admin | Liste les panels |
 | `/stats` | Everyone | Ses propres statistiques |
+| `/myclaims` | Everyone | Claims récents avec statuts et stats |
+| `/setup roles` | Boss | Configure les rôles de permission |
+| `/setup channels` | Boss | Configure les salons de logs |
+| `/setup limits` | Boss | Configure limites de claims/cooldown |
+| `/setup info` | Boss | Voir la configuration actuelle |
 
 ---
 
@@ -120,25 +131,29 @@
 
 ## À faire / Prochaines étapes
 
-### Court terme
-- [ ] Tests unitaires services critiques (claimService, cartParser)
-- [ ] Page user detail `/users/[id]` avec historique complet
-- [ ] Export CSV claims / analytics
-- [ ] Refresh temps réel overview (WebSocket hook)
+### Court terme (optionnel)
+- [ ] E2E tests (Playwright pour le dashboard)
+- [ ] Migration Prisma `db:migrate deploy` en CI/CD
+- [ ] Rate limiting sur les routes API Express
+- [ ] Monitoring (Sentry ou logs structurés)
 
 ### Déploiement Railway
 1. Créer deux services : `discord-bot` et `dashboard`
 2. Ajouter un service PostgreSQL Railway
-3. Configurer les variables d'environnement
-4. Build commands :
-   - Bot : `npm run build` → `node dist/index.js`
-   - Dashboard : `next build` → `next start`
-5. `npm run db:migrate:deploy` en pre-deploy
+3. Configurer les variables d'environnement (voir `.env.example`)
+4. Le `railway.toml` de chaque app configure le build automatiquement
+5. Le `docker-compose.yml` à la racine sert au dev local
 
 ### Variables Railway à configurer
 Toutes les variables du `.env.example` + :
 - `BOT_API_URL=http://discord-bot.railway.internal:4000`
-- `NEXT_PUBLIC_BOT_WS_URL=https://discord-bot.up.railway.app`
+- `NEXT_PUBLIC_WS_URL=https://discord-bot.up.railway.app`
+
+### Dev local avec Docker
+```bash
+docker-compose up -d          # lance postgres + bot + dashboard
+npm run db:migrate             # depuis le host (si besoin)
+```
 
 ---
 
