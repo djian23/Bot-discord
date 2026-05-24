@@ -5,6 +5,7 @@ import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { EventDetailActions } from "@/components/dashboard/actions/event-actions";
+import { EmbedConfigForm } from "@/components/dashboard/embed-config-form";
 import { ArrowLeft, Copy } from "lucide-react";
 import Link from "next/link";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -114,6 +115,18 @@ export default async function EventDetailPage({ params }: { params: { id: string
             <p className="text-xs text-white/40 mt-0.5">{status}</p>
           </div>
         ))}
+      </div>
+
+      {/* Embed config */}
+      <div className="bg-discord-darker border border-white/5 rounded-xl p-5">
+        <h2 className="text-sm font-semibold text-white/70 uppercase tracking-wider mb-4">
+          Configuration de l'embed public
+        </h2>
+        <EmbedConfigForm
+          eventId={event.id}
+          embedColor={event.embedColor}
+          embedTemplate={(event.embedTemplate as any) ?? {}}
+        />
       </div>
 
       {/* Actions */}

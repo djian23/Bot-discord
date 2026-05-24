@@ -1,9 +1,9 @@
-import { EmbedBuilder, ModalSubmitInteraction } from "discord.js";
+import { ModalSubmitInteraction, TextChannel } from "discord.js";
 import { prisma } from "@discord-manager/database";
 import { BotClient } from "../client";
-import { buildDraftEmbed } from "../events/messageCreate";
+import { buildPublicEmbed, EmbedTemplate } from "../services/cartService";
 
-export async function handleModal(interaction: ModalSubmitInteraction, _client: BotClient) {
+export async function handleModal(interaction: ModalSubmitInteraction, client: BotClient) {
   const [prefix, ...args] = interaction.customId.split(":");
 
   if (prefix === "modal_add_note") {
@@ -20,23 +20,11 @@ export async function handleModal(interaction: ModalSubmitInteraction, _client: 
 
     if (ticket) {
       await prisma.staffNote.create({
-        data: {
-          userId: ticket.userId,
-          ticketId: ticket.id,
-          authorId: user.id,
-          content,
-        },
+        data: { userId: ticket.userId, ticketId: ticket.id, authorId: user.id, content },
       });
-
       await prisma.ticketLog.create({
-        data: {
-          ticketId: ticket.id,
-          authorId: user.id,
-          content: `📝 Note staff : ${content}`,
-          isStaff: true,
-        },
+        data: { ticketId: ticket.id, authorId: user.id, content: `📝 Note staff : ${content}`, isStaff: true },
       });
-
       await interaction.channel?.send({
         content: `📝 **Note staff ajoutée par ${interaction.user.username}**\n${content}`,
       });
@@ -65,18 +53,20 @@ export async function handleModal(interaction: ModalSubmitInteraction, _client: 
       include: { event: true },
     });
 
-    // Refresh the source preview embed with updated values
-    const color = parseInt((cart.event.embedColor ?? "#5865F2").replace("#", ""), 16);
-    const newEmbed = buildDraftEmbed(cart, cart.event, color);
+    // Update the already-posted public channel embed
+    if (cart.event.publicChannelId && cart.publicMessageId) {
+      try {
+        const pubChannel = client.channels.cache.get(cart.event.publicChannelId) as TextChannel;
+        const pubMsg = await pubChannel?.messages.fetch(cart.publicMessageId);
+        if (pubMsg) {
+          const tpl = (cart.event.embedTemplate ?? {}) as EmbedTemplate;
+          const newEmbed = buildPublicEmbed(cart as any, tpl);
+          await pubMsg.edit({ embeds: [newEmbed] });
+        }
+      } catch {}
+    }
 
-    try {
-      const sourceMsg = interaction.message;
-      if (sourceMsg) {
-        await sourceMsg.edit({ embeds: [newEmbed] });
-      }
-    } catch {}
-
-    await interaction.editReply("✅ Cart mis à jour.");
+    await interaction.editReply(`✅ Cart mis à jour et embed public rafraîchi.`);
     return;
   }
 }

@@ -1,11 +1,12 @@
-import { ButtonInteraction } from "discord.js";
+import { ButtonInteraction, EmbedBuilder, TextChannel } from "discord.js";
 import { prisma } from "@discord-manager/database";
 import { BotClient } from "../client";
 import { hasPermission } from "../utils/permissions";
+import { EMBED_COLORS } from "@discord-manager/shared";
 
 export const customId = "cart_discard";
 
-export async function execute(interaction: ButtonInteraction, _client: BotClient, args: string[]) {
+export async function execute(interaction: ButtonInteraction, client: BotClient, args: string[]) {
   if (!hasPermission(interaction.member as any, "STAFF")) {
     return interaction.reply({ content: "❌ Réservé au staff.", ephemeral: true });
   }
@@ -15,15 +16,31 @@ export async function execute(interaction: ButtonInteraction, _client: BotClient
 
   await interaction.deferUpdate();
 
-  const cart = await prisma.cart.findUnique({ where: { id: cartId } });
-  if (!cart || cart.status !== "DRAFT") {
+  const cart = await prisma.cart.findUnique({
+    where: { id: cartId },
+    include: { event: true },
+  });
+
+  if (!cart || !["AVAILABLE", "DRAFT"].includes(cart.status)) {
     return interaction.followUp({ content: "❌ Cart introuvable ou déjà traité.", ephemeral: true });
   }
 
-  await prisma.cart.update({
-    where: { id: cartId },
-    data: { status: "CANCELLED" },
-  });
+  await prisma.cart.update({ where: { id: cartId }, data: { status: "CANCELLED" } });
 
-  await interaction.message.delete().catch(() => {});
+  // Remove from public channel if already posted
+  if (cart.event.publicChannelId && cart.publicMessageId) {
+    try {
+      const pubChannel = client.channels.cache.get(cart.event.publicChannelId) as TextChannel;
+      const pubMsg = await pubChannel?.messages.fetch(cart.publicMessageId);
+      if (pubMsg) {
+        const embed = EmbedBuilder.from(pubMsg.embeds[0])
+          .setColor(EMBED_COLORS.ERROR)
+          .setTitle("❌ Cart Annulé");
+        await pubMsg.edit({ embeds: [embed], components: [] });
+      }
+    } catch {}
+  }
+
+  // Remove buttons from source control panel
+  await interaction.message.edit({ components: [] }).catch(() => {});
 }

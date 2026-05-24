@@ -19,6 +19,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ ok: true, status: newStatus });
   }
 
+  if (body.action === "update_embed") {
+    const { embedColor, embedTemplate } = body;
+    await prisma.event.update({
+      where: { id: params.id },
+      data: {
+        ...(embedColor ? { embedColor } : {}),
+        ...(embedTemplate !== undefined ? { embedTemplate } : {}),
+      },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 }
 
