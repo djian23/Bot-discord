@@ -90,6 +90,7 @@ enum LogAction {
   ROLE_REMOVED
   INVITE_DETECTED
   WEBHOOK_ERROR
+  SERVER_SETUP
   ERROR
 }
 
@@ -179,8 +180,11 @@ model Guild {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  events   Event[]
-  settings GuildSettings?
+  events           Event[]
+  settings         GuildSettings?
+  serverCategories ServerCategory[]
+  serverChannels   ServerChannel[]
+  ticketCategories TicketCategory[]
 
   @@map("guilds")
 }
@@ -227,8 +231,10 @@ model Event {
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
-  guild  Guild  @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  carts  Cart[]
+  guild          Guild           @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  carts          Cart[]
+  serverChannels ServerChannel[]
+  ticketCategory TicketCategory?
 
   @@unique([guildId, slug])
   @@map("events")
@@ -295,6 +301,7 @@ model Claim {
 model Ticket {
   id               String       @id @default(cuid())
   userId           String
+  ticketCategoryId String?
   discordChannelId String       @unique
   status           TicketStatus @default(OPEN)
   transcriptUrl    String?
@@ -304,11 +311,12 @@ model Ticket {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  closedBy  User?       @relation("TicketCloser", fields: [closedById], references: [id])
-  claims    Claim[]
-  messages  TicketLog[]
-  staffNotes StaffNote[]
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  closedBy       User?           @relation("TicketCloser", fields: [closedById], references: [id])
+  ticketCategory TicketCategory? @relation(fields: [ticketCategoryId], references: [id])
+  claims         Claim[]
+  messages       TicketLog[]
+  staffNotes     StaffNote[]
 
   @@map("tickets")
 }
@@ -563,6 +571,68 @@ model Log {
   @@index([guildId, action])
   @@index([guildId, createdAt])
   @@map("logs")
+}
+
+// ─────────────────────────────────────────────────────────────
+// SERVER STRUCTURE
+// ─────────────────────────────────────────────────────────────
+
+model ServerCategory {
+  id        String   @id @default(cuid())
+  guildId   String
+  discordId String   @unique
+  name      String
+  section   String
+  isEnabled Boolean  @default(true)
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guild    Guild           @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  channels ServerChannel[]
+
+  @@map("server_categories")
+}
+
+model ServerChannel {
+  id            String   @id @default(cuid())
+  guildId       String
+  categoryDbId  String?
+  discordId     String   @unique
+  name          String
+  slug          String
+  type          String   @default("text")
+  channelRole   String?
+  section       String?
+  isEnabled     Boolean  @default(true)
+  isPrivate     Boolean  @default(false)
+  webhookId     String?
+  webhookUrl    String?
+  linkedEventId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  guild    Guild           @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  category ServerCategory? @relation(fields: [categoryDbId], references: [id])
+  event    Event?          @relation(fields: [linkedEventId], references: [id])
+
+  @@map("server_channels")
+}
+
+model TicketCategory {
+  id        String   @id @default(cuid())
+  guildId   String
+  eventId   String?  @unique
+  name      String
+  discordId String?
+  isEnabled Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  guild   Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  event   Event?   @relation(fields: [eventId], references: [id])
+  tickets Ticket[]
+
+  @@map("ticket_categories")
 }
 
 // ─────────────────────────────────────────────────────────────

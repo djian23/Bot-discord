@@ -7,6 +7,12 @@ import { createEventWithChannels } from "../services/eventService";
 import { expireCart } from "../services/cartService";
 import { closeTicket } from "../services/ticketService";
 import { sendAnnouncement } from "../services/announcementService";
+import {
+  buildServerStructure,
+  scanServer,
+  repairServer,
+  getServerStatus,
+} from "../services/serverBuilderService";
 
 function authMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
   const secret = req.headers["x-bot-secret"];
@@ -198,6 +204,50 @@ export async function startApiServer(client: BotClient) {
     ]);
 
     res.json({ cartsToday, claimsToday, paidToday, openTickets });
+  });
+
+  // Server status
+  app.get("/server/status", async (_req, res) => {
+    try {
+      const guild = await prisma.guild.findUnique({ where: { discordId: process.env.DISCORD_GUILD_ID! } });
+      if (!guild) return res.status(404).json({ error: "Guild not found" });
+      const status = await getServerStatus(guild.id);
+      res.json(status);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Build server structure
+  app.post("/server/build", async (req, res) => {
+    try {
+      const { sections, skipExisting = true } = req.body;
+      const result = await buildServerStructure(client, process.env.DISCORD_GUILD_ID!, sections, skipExisting);
+      res.json(result);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Scan server
+  app.post("/server/scan", async (_req, res) => {
+    try {
+      const result = await scanServer(client, process.env.DISCORD_GUILD_ID!);
+      res.json(result);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Repair server
+  app.post("/server/repair", async (req, res) => {
+    try {
+      const { sections } = req.body;
+      const result = await repairServer(client, process.env.DISCORD_GUILD_ID!, sections);
+      res.json(result);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
   });
 
   const port = parseInt(process.env.BOT_API_PORT ?? "4000");

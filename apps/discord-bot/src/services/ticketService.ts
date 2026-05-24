@@ -35,8 +35,22 @@ export async function getOrCreateTicket(
     });
   }
 
+  // Get or create a TicketCategory for this event (per-event ticket categories)
+  let ticketCat = await prisma.ticketCategory.findUnique({
+    where: { eventId: cart.event.id },
+  });
+  if (!ticketCat) {
+    ticketCat = await prisma.ticketCategory.create({
+      data: {
+        guildId: guildRecord!.id,
+        eventId: cart.event.id,
+        name: `🎫 ${cart.event.name} Tickets`,
+      },
+    });
+  }
+
   let ticket = await prisma.ticket.findFirst({
-    where: { userId: userRecord.id, status: "OPEN" },
+    where: { userId: userRecord.id, ticketCategoryId: ticketCat.id, status: "OPEN" },
   });
 
   let channel: TextChannel;
@@ -51,8 +65,6 @@ export async function getOrCreateTicket(
   }
 
   if (!ticket) {
-    const settings = await prisma.guildSettings.findUnique({ where: { guildId: guildRecord!.id } });
-
     const ticketName = `ticket-${member.user.username.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
 
     const createOptions: any = {
@@ -70,8 +82,9 @@ export async function getOrCreateTicket(
       ],
     };
 
-    if (settings?.ticketCategoryId) {
-      createOptions.parent = settings.ticketCategoryId;
+    // Use the event's TicketCategory Discord channel as parent if it exists
+    if (ticketCat.discordId) {
+      createOptions.parent = ticketCat.discordId;
     }
 
     if (guildRecord?.staffRoleId) {
@@ -87,6 +100,7 @@ export async function getOrCreateTicket(
       data: {
         userId: userRecord.id,
         discordChannelId: channel.id,
+        ticketCategoryId: ticketCat.id,
         status: "OPEN",
       },
     });

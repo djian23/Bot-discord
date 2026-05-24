@@ -104,5 +104,13 @@ export async function createEventWithChannels(
     },
   });
 
+  await prisma.ticketCategory.create({
+    data: {
+      guildId: guildRecord.id,
+      eventId: event.id,
+      name: `🎫 ${payload.name} Tickets`,
+    },
+  });
+
   return { event, webhook };
 }
