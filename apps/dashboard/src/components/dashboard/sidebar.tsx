@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, CalendarDays, ShoppingCart, CheckCircle,
   Ticket, Users, Shield, Gift, Star, Link2, Megaphone,
-  BarChart2, Settings, ScrollText, Server, Zap, Tag, CreditCard, User,
+  BarChart2, Settings, ScrollText, Server, Zap, Tag, CreditCard, User, Sparkles,
 } from "lucide-react";
 
 const NAV = [
@@ -27,6 +27,7 @@ const NAV = [
   { href: "/listings",        label: "Listings",        icon: Tag },
   { href: "/analytics",       label: "Analytics",       icon: BarChart2 },
   { href: "/logs",            label: "Logs",            icon: ScrollText },
+  { href: "/ai-settings",     label: "IA Settings",     icon: Sparkles },
   { href: "/server-setup",    label: "Server Setup",    icon: Server },
   { href: "/settings",        label: "Settings",        icon: Settings },
 ];
