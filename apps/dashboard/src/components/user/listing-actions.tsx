@@ -70,7 +70,7 @@ export function ListingActions({ listing }: Props) {
       category: form.category || undefined,
       quantity: form.quantity,
       priceEach: form.priceEach ? parseFloat(form.priceEach) : undefined,
-      imageUrl: form.image || undefined,
+      imageUrl: form.imageUrl || undefined,
       channelId: form.channelId || undefined,
     });
     setEditOpen(false);
