@@ -10,17 +10,22 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await req.json();
+  try {
+    const body = await req.json();
 
-  if (body.status) {
-    await prisma.claim.update({
-      where: { id: params.id },
-      data: {
-        status: body.status,
-        ...(body.status === "PAID" ? { paidAt: new Date() } : {}),
-      },
-    });
+    if (body.status) {
+      await prisma.claim.update({
+        where: { id: params.id },
+        data: {
+          status: body.status,
+          ...(body.status === "PAID" ? { paidAt: new Date() } : {}),
+        },
+      });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[claims/PATCH]", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  return NextResponse.json({ ok: true });
 }

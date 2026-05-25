@@ -35,32 +35,37 @@ export async function sendPushover(
   }
 }
 
+let _appTokenCache: { value: string | null; expiresAt: number } | null = null;
+
 async function getGuildAppToken(): Promise<string | null> {
-  const gs = await prisma.guildSettings.findFirst();
-  return gs?.pushoverAppToken ?? null;
+  const now = Date.now();
+  if (_appTokenCache && _appTokenCache.expiresAt > now) return _appTokenCache.value;
+  const gs = await prisma.guildSettings.findFirst({ select: { pushoverAppToken: true } });
+  const value = gs?.pushoverAppToken ?? null;
+  _appTokenCache = { value, expiresAt: now + 5 * 60 * 1000 };
+  return value;
 }
 
 export async function notifyPublicCart(cartId: string) {
   const appToken = await getGuildAppToken();
   if (!appToken) return;
 
-  const settings = await prisma.notificationSettings.findMany({
-    where: { enabled: true, notifyPublicCarts: true, pushoverUserKey: { not: null } },
-    include: { user: true },
-  });
-  const cart = await prisma.cart.findUnique({ where: { id: cartId }, include: { event: true } });
+  const [cart, settings] = await Promise.all([
+    prisma.cart.findUnique({ where: { id: cartId }, include: { event: true } }),
+    prisma.notificationSettings.findMany({
+      where: { enabled: true, notifyPublicCarts: true, pushoverUserKey: { not: null } },
+      select: { pushoverUserKey: true, quietHoursStart: true, quietHoursEnd: true },
+      take: 500,
+    }),
+  ]);
   if (!cart) return;
 
-  for (const s of settings) {
-    if (isQuietHours(s.quietHoursStart, s.quietHoursEnd)) continue;
-    await sendPushover(
-      s.pushoverUserKey!,
-      appToken,
-      "🔥 New Cart Available",
-      `Event: ${cart.event.name}\nPrix: ${cart.price != null ? cart.price + "€" : "—"}\nPAS: ${cart.event.pasText ?? (cart.event.pasAmount ? cart.event.pasAmount + "€ each" : "—")}`,
-      { priority: 1 },
-    );
-  }
+  const message = `Event: ${cart.event.name}\nPrix: ${cart.price != null ? cart.price + "€" : "—"}\nPAS: ${cart.event.pasText ?? (cart.event.pasAmount ? cart.event.pasAmount + "€ each" : "—")}`;
+  await Promise.all(
+    settings
+      .filter((s) => !isQuietHours(s.quietHoursStart, s.quietHoursEnd))
+      .map((s) => sendPushover(s.pushoverUserKey!, appToken, "🔥 New Cart Available", message, { priority: 1 })),
+  );
 }
 
 export async function notifyTicketCart(userId: string, cartId: string) {

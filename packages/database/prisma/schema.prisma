@@ -297,6 +297,9 @@ model Cart {
   event  Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
   claims Claim[]
 
+  @@index([eventId])
+  @@index([status])
+  @@index([eventId, status])
   @@map("carts")
 }
 
@@ -320,6 +323,8 @@ model Claim {
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   ticket Ticket? @relation(fields: [ticketId], references: [id])
 
+  @@index([userId])
+  @@index([cartId])
   @@map("claims")
 }
 
@@ -347,6 +352,8 @@ model Ticket {
   messages       TicketLog[]
   staffNotes     StaffNote[]
 
+  @@index([userId, status])
+  @@index([ticketCategoryId])
   @@map("tickets")
 }
 

@@ -133,7 +133,7 @@ export async function getOrCreateTicket(
   }
 
   // Send cart to ticket
-  await sendCartToTicket(channel, cart, member);
+  await sendCartToTicket(channel, cart, member, ticket.id);
 
   // Notify user via Pushover if enabled
   await notifyTicketCart(userRecord.id, cart.id);
@@ -141,7 +141,7 @@ export async function getOrCreateTicket(
   return { ticket, channel };
 }
 
-async function sendCartToTicket(channel: TextChannel, cart: CartWithEvent, member: GuildMember) {
+async function sendCartToTicket(channel: TextChannel, cart: CartWithEvent, member: GuildMember, ticketId: string) {
   const embed = new EmbedBuilder()
     .setTitle(`🛒 Cart Claim — ${cart.title}`)
     .setColor(0x57f287)
@@ -172,13 +172,10 @@ async function sendCartToTicket(channel: TextChannel, cart: CartWithEvent, membe
     new ButtonBuilder().setCustomId(`ticket_add_note:${cart.id}`).setLabel("Note").setStyle(ButtonStyle.Secondary),
   );
 
-  await channel.send({ content: `${member}`, embeds: [embed], components: [row] });
-
-  // Update lastActivityAt so the auto-close cron has accurate data
-  const ticket = await prisma.ticket.findFirst({ where: { discordChannelId: channel.id } });
-  if (ticket) {
-    await prisma.ticket.update({ where: { id: ticket.id }, data: { lastActivityAt: new Date() } });
-  }
+  await Promise.all([
+    channel.send({ content: `${member}`, embeds: [embed], components: [row] }),
+    prisma.ticket.update({ where: { id: ticketId }, data: { lastActivityAt: new Date() } }),
+  ]);
 }
 
 export async function closeTicket(client: BotClient, ticketId: string, closedById: string) {
