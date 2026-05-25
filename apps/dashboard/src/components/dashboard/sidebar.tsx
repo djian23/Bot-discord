@@ -6,26 +6,33 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, CalendarDays, ShoppingCart, CheckCircle,
   Ticket, Users, Shield, Gift, Star, Link2, Megaphone,
-  BarChart2, Settings, ScrollText, Server, Zap,
+  BarChart2, Settings, ScrollText, Server, Zap, Tag, CreditCard, User,
 } from "lucide-react";
 
 const NAV = [
-  { href: "/overview",      label: "Overview",        icon: LayoutDashboard },
-  { href: "/events",        label: "Events",          icon: CalendarDays },
-  { href: "/carts",         label: "Carts",           icon: ShoppingCart },
-  { href: "/claims",        label: "Claims",          icon: CheckCircle },
-  { href: "/tickets",       label: "Tickets",         icon: Ticket },
-  { href: "/users",         label: "Users",           icon: Users },
-  { href: "/roles",         label: "Roles",           icon: Shield },
-  { href: "/giveaways",     label: "Giveaways",       icon: Gift },
+  { href: "/overview",        label: "Overview",        icon: LayoutDashboard },
+  { href: "/events",          label: "Events",          icon: CalendarDays },
+  { href: "/distribution",    label: "Distribution",    icon: Zap },
+  { href: "/carts",           label: "Carts",           icon: ShoppingCart },
+  { href: "/claims",          label: "Claims",          icon: CheckCircle },
+  { href: "/tickets",         label: "Tickets",         icon: Ticket },
+  { href: "/ticket-payments", label: "Ticket Payments", icon: CreditCard },
+  { href: "/users",           label: "Users",           icon: Users },
+  { href: "/roles",           label: "Roles",           icon: Shield },
+  { href: "/giveaways",       label: "Giveaways",       icon: Gift },
   { href: "/interest-checks", label: "Interest Checks", icon: Star },
-  { href: "/invites",       label: "Invites",         icon: Link2 },
-  { href: "/announcements", label: "Annonces",        icon: Megaphone },
-  { href: "/wts",           label: "WTS Generator",   icon: Zap },
-  { href: "/analytics",     label: "Analytics",       icon: BarChart2 },
-  { href: "/logs",          label: "Logs",            icon: ScrollText },
-  { href: "/server-setup",  label: "Server Setup",    icon: Server },
-  { href: "/settings",      label: "Settings",        icon: Settings },
+  { href: "/invites",         label: "Invites",         icon: Link2 },
+  { href: "/announcements",   label: "Annonces",        icon: Megaphone },
+  { href: "/wts",             label: "WTS Generator",   icon: Zap },
+  { href: "/listings",        label: "Listings",        icon: Tag },
+  { href: "/analytics",       label: "Analytics",       icon: BarChart2 },
+  { href: "/logs",            label: "Logs",            icon: ScrollText },
+  { href: "/server-setup",    label: "Server Setup",    icon: Server },
+  { href: "/settings",        label: "Settings",        icon: Settings },
+];
+
+const BOTTOM_NAV = [
+  { href: "/my", label: "Mon Espace", icon: User },
 ];
 
 export function Sidebar() {
@@ -56,6 +63,26 @@ export function Sidebar() {
           );
         })}
       </nav>
+      <div className="py-3 px-2 border-t border-white/5 space-y-0.5">
+        {BOTTOM_NAV.map(({ href, label, icon: Icon }) => {
+          const active = pathname === href || pathname.startsWith(href + "/");
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                active
+                  ? "bg-discord-blurple text-white"
+                  : "text-white/60 hover:text-white hover:bg-white/5",
+              )}
+            >
+              <Icon className="size-4 shrink-0" />
+              {label}
+            </Link>
+          );
+        })}
+      </div>
     </aside>
   );
 }
