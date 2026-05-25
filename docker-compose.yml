@@ -26,12 +26,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    env_file:
-      - apps/discord-bot/.env
+    env_file: .env
     environment:
       DATABASE_URL: postgresql://discord:discord_secret@postgres:5432/discord_manager
     ports:
       - "4000:4000"
+      - "4001:4001"
 
   dashboard:
     build:
@@ -41,11 +41,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    env_file:
-      - apps/dashboard/.env
+      bot:
+        condition: service_started
+    env_file: .env
     environment:
       DATABASE_URL: postgresql://discord:discord_secret@postgres:5432/discord_manager
       BOT_API_URL: http://bot:4000
+      NEXT_PUBLIC_BOT_WS_URL: http://bot:4001
     ports:
       - "3000:3000"
 

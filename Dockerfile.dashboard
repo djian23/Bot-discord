@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Install dependencies
 FROM base AS deps
-COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
+COPY package.json package-lock.json* ./
 COPY apps/dashboard/package.json ./apps/dashboard/
 COPY packages/database/package.json ./packages/database/
 COPY packages/shared/package.json ./packages/shared/
@@ -31,6 +31,9 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/apps/dashboard/public ./apps/dashboard/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/.next/static ./apps/dashboard/.next/static
+
+# Prisma schema + engines needed at runtime
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 
 USER nextjs
 EXPOSE 3000
