@@ -17,7 +17,6 @@ export async function PATCH(req: NextRequest) {
   // Whitelist allowed fields
   const {
     pushoverUserKey,
-    pushoverAppToken,
     enabled,
     notifyPublicCarts,
     notifyTicketCarts,
@@ -30,7 +29,6 @@ export async function PATCH(req: NextRequest) {
 
   const data: Record<string, unknown> = {};
   if (pushoverUserKey !== undefined) data.pushoverUserKey = pushoverUserKey || null;
-  if (pushoverAppToken !== undefined) data.pushoverAppToken = pushoverAppToken || null;
   if (enabled !== undefined) data.enabled = enabled;
   if (notifyPublicCarts !== undefined) data.notifyPublicCarts = notifyPublicCarts;
   if (notifyTicketCarts !== undefined) data.notifyTicketCarts = notifyTicketCarts;
