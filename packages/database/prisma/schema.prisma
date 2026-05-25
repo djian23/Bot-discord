@@ -43,6 +43,7 @@ enum CartStatus {
 
 enum ClaimStatus {
   PENDING
+  SELECTED_FOR_PAYMENT
   PAID
   CANCELLED
   REFUNDED
@@ -93,6 +94,7 @@ enum LogAction {
   WEBHOOK_ERROR
   SERVER_SETUP
   WTS_POSTED
+  DISTRIBUTION_CHANGED
   ERROR
 }
 
@@ -130,18 +132,20 @@ model User {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  claims          Claim[]
-  tickets         Ticket[]
-  staffNotes      StaffNote[]
-  giveawayEntries GiveawayEntry[]
-  giveawayWins    GiveawayWinner[]
-  interestVotes   InterestVote[]
-  invitesSent     Invite[]        @relation("InviterRelation")
-  invitedBy       Invite?         @relation("InviteeRelation")
-  logsActor       Log[]           @relation("LogActor")
-  logsTarget      Log[]           @relation("LogTarget")
-  closedTickets   Ticket[]        @relation("TicketCloser")
-  sessions        Session[]
+  claims               Claim[]
+  tickets              Ticket[]
+  staffNotes           StaffNote[]
+  giveawayEntries      GiveawayEntry[]
+  giveawayWins         GiveawayWinner[]
+  interestVotes        InterestVote[]
+  invitesSent          Invite[]             @relation("InviterRelation")
+  invitedBy            Invite?              @relation("InviteeRelation")
+  logsActor            Log[]                @relation("LogActor")
+  logsTarget           Log[]                @relation("LogTarget")
+  closedTickets        Ticket[]             @relation("TicketCloser")
+  sessions             Session[]
+  notificationSettings NotificationSettings?
+  listings             Listing[]
 
   @@map("users")
 }
@@ -188,6 +192,7 @@ model Guild {
   serverChannels   ServerChannel[]
   ticketCategories TicketCategory[]
   wtsMessages      WtsMessage[]
+  listings         Listing[]
 
   @@map("guilds")
 }
@@ -230,14 +235,17 @@ model Event {
   mode             EventMode   @default(PUBLIC)
   status           EventStatus @default(ACTIVE)
   allowedRoleId    String?
-  defaultExpiresIn Int?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  defaultExpiresIn  Int?
+  distributionMode  String  @default("PUBLIC_CLAIM")
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 
-  guild          Guild           @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  carts          Cart[]
-  serverChannels ServerChannel[]
-  ticketCategory TicketCategory?
+  guild                Guild                       @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  carts                Cart[]
+  serverChannels       ServerChannel[]
+  ticketCategory       TicketCategory?
+  distributionSettings EventDistributionSettings?
+  listings             Listing[]
 
   @@unique([guildId, slug])
   @@map("events")
@@ -281,14 +289,16 @@ model Cart {
 // ─────────────────────────────────────────────────────────────
 
 model Claim {
-  id        String      @id @default(cuid())
-  cartId    String
-  userId    String
-  ticketId  String?
-  status    ClaimStatus @default(PENDING)
-  paidAt    DateTime?
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id              String      @id @default(cuid())
+  cartId          String
+  userId          String
+  ticketId        String?
+  status          ClaimStatus @default(PENDING)
+  paidAt          DateTime?
+  userWantsToPay  Boolean     @default(false)
+  userSelectedAt  DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -662,6 +672,73 @@ model WtsMessage {
   guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
 
   @@map("wts_messages")
+}
+
+// ─────────────────────────────────────────────────────────────
+// DISTRIBUTION / NOTIFICATIONS / LISTINGS
+// ─────────────────────────────────────────────────────────────
+
+model EventDistributionSettings {
+  id                   String   @id @default(cuid())
+  eventId              String   @unique
+  mode                 String   @default("PUBLIC_CLAIM")
+  targetUserId         String?
+  targetRoleId         String?
+  ticketCategoryId     String?
+  notifyPushover       Boolean  @default(false)
+  staffReviewChannelId String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("event_distribution_settings")
+}
+
+model NotificationSettings {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  pushoverUserKey    String?
+  pushoverAppToken   String?
+  enabled            Boolean  @default(false)
+  notifyPublicCarts  Boolean  @default(true)
+  notifyTicketCarts  Boolean  @default(true)
+  notifyClaims       Boolean  @default(true)
+  notifyPaid         Boolean  @default(true)
+  notifyExpired      Boolean  @default(false)
+  quietHoursStart    Int?
+  quietHoursEnd      Int?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_settings")
+}
+
+model Listing {
+  id               String   @id @default(cuid())
+  sellerId         String
+  guildId          String
+  eventId          String?
+  title            String
+  date             String?
+  category         String?
+  quantity         String
+  priceEach        Float?
+  image            String?
+  status           String   @default("DRAFT")
+  discordMessageId String?
+  discordChannelId String?
+  content          String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  seller User   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  guild  Guild  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  event  Event? @relation(fields: [eventId], references: [id])
+
+  @@map("listings")
 }
 
 // ─────────────────────────────────────────────────────────────

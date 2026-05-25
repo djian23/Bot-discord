@@ -12,6 +12,7 @@ import {
 import { prisma, Cart, Event } from "@discord-manager/database";
 import { BotClient } from "../client";
 import { emitWsEvent } from "../api/wsServer";
+import { notifyTicketCart } from "./pushoverService";
 
 type CartWithEvent = Cart & { event: Event };
 
@@ -134,6 +135,9 @@ export async function getOrCreateTicket(
   // Send cart to ticket
   await sendCartToTicket(channel, cart, member);
 
+  // Notify user via Pushover if enabled
+  await notifyTicketCart(userRecord.id, cart.id);
+
   return { ticket, channel };
 }
 
@@ -162,9 +166,10 @@ async function sendCartToTicket(channel: TextChannel, cart: CartWithEvent, membe
   embed.setTimestamp().setFooter({ text: `Cart #${cart.id.slice(0, 8)}` });
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`cart_paid:${cart.id}`).setLabel("Mark Paid").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`cart_wants_pay:${cart.id}`).setLabel("✅ I PAY THIS").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`cart_paid:${cart.id}`).setLabel("Mark Paid").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(`cart_cancel:${cart.id}`).setLabel("Cancel").setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId(`ticket_add_note:${cart.id}`).setLabel("Add Note").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`ticket_add_note:${cart.id}`).setLabel("Note").setStyle(ButtonStyle.Secondary),
   );
 
   await channel.send({ content: `${member}`, embeds: [embed], components: [row] });

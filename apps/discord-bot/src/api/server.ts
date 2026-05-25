@@ -250,6 +250,24 @@ export async function startApiServer(client: BotClient) {
     }
   });
 
+  // Get/upsert distribution settings for an event
+  app.post("/events/:id/distribution", async (req, res) => {
+    try {
+      const { mode, targetUserId, targetRoleId, ticketCategoryId, notifyPushover, staffReviewChannelId } = req.body;
+      const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+      if (!event) return res.status(404).json({ error: "Event not found" });
+
+      const settings = await prisma.eventDistributionSettings.upsert({
+        where: { eventId: req.params.id },
+        create: { eventId: req.params.id, mode, targetUserId, targetRoleId, ticketCategoryId, notifyPushover: Boolean(notifyPushover), staffReviewChannelId },
+        update: { mode, targetUserId, targetRoleId, ticketCategoryId, notifyPushover: Boolean(notifyPushover), staffReviewChannelId },
+      });
+      res.json(settings);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   // WTS post
   app.post("/wts/post", async (req, res) => {
     try {
