@@ -208,6 +208,7 @@ model Guild {
   ticketCategories TicketCategory[]
   wtsMessages      WtsMessage[]
   listings         Listing[]
+  aiSettings       AiSettings?
 
   @@map("guilds")
 }
@@ -761,6 +762,50 @@ model Listing {
   event  Event? @relation(fields: [eventId], references: [id])
 
   @@map("listings")
+}
+
+// ─────────────────────────────────────────────────────────────
+// AI
+// ─────────────────────────────────────────────────────────────
+
+model AiSettings {
+  id               String   @id @default(cuid())
+  guildId          String   @unique
+  enabled          Boolean  @default(false)
+  openrouterApiKey String?
+  mainModel        String   @default("deepseek/deepseek-v4-flash:free")
+  fallbackModel    String   @default("qwen/qwen3-coder:free")
+  temperature      Float    @default(0.7)
+  maxTokens        Int      @default(1024)
+  timeoutSeconds   Int      @default(30)
+  enableFallback   Boolean  @default(true)
+  enableLogs       Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  guild Guild  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  logs  AiLog[]
+
+  @@map("ai_settings")
+}
+
+model AiLog {
+  id           String   @id @default(cuid())
+  aiSettingsId String
+  type         String
+  model        String
+  input        String   @db.Text
+  output       String?  @db.Text
+  tokensUsed   Int?
+  latencyMs    Int?
+  success      Boolean  @default(true)
+  error        String?
+  createdAt    DateTime @default(now())
+
+  aiSettings AiSettings @relation(fields: [aiSettingsId], references: [id], onDelete: Cascade)
+
+  @@index([aiSettingsId, createdAt])
+  @@map("ai_logs")
 }
 
 // ─────────────────────────────────────────────────────────────
