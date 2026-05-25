@@ -220,6 +220,7 @@ model GuildSettings {
   announcementChannelId String?
   inviteLogChannelId    String?
   openaiModel           String  @default("gpt-4o-mini")
+  pushoverAppToken      String?
 
   guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
 
@@ -714,7 +715,6 @@ model NotificationSettings {
   id                 String   @id @default(cuid())
   userId             String   @unique
   pushoverUserKey    String?
-  pushoverAppToken   String?
   enabled            Boolean  @default(false)
   notifyPublicCarts  Boolean  @default(true)
   notifyTicketCarts  Boolean  @default(true)
@@ -778,72 +778,3 @@ model DailyStats {
   @@map("daily_stats")
 }
 
-// ─────────────────────────────────────────────────────────────
-// NOTIFICATION SETTINGS
-// ─────────────────────────────────────────────────────────────
-
-model NotificationSettings {
-  id                  String  @id @default(cuid())
-  userId              String  @unique
-  pushoverUserKey     String?
-  pushoverAppToken    String?
-  enabled             Boolean @default(false)
-  notifyPublicCarts   Boolean @default(true)
-  notifyTicketCarts   Boolean @default(true)
-  notifyClaims        Boolean @default(true)
-  notifyPaid          Boolean @default(true)
-  notifyExpired       Boolean @default(false)
-  quietHoursStart     Int?
-  quietHoursEnd       Int?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("notification_settings")
-}
-
-// ─────────────────────────────────────────────────────────────
-// LISTING
-// ─────────────────────────────────────────────────────────────
-
-model Listing {
-  id              String        @id @default(cuid())
-  sellerId        String
-  eventId         String?
-  title           String
-  eventName       String?
-  eventDate       String?
-  category        String
-  quantity        String
-  priceEach       Float?
-  imageUrl        String?
-  channelId       String?
-  status          ListingStatus @default(DRAFT)
-  discordMsgId    String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  seller User   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  event  Event? @relation(fields: [eventId], references: [id])
-
-  @@map("listings")
-}
-
-// ─────────────────────────────────────────────────────────────
-// DISTRIBUTION SETTINGS
-// ─────────────────────────────────────────────────────────────
-
-model DistributionSettings {
-  id                    String           @id @default(cuid())
-  eventId               String           @unique
-  mode                  DistributionMode @default(PUBLIC_CLAIM)
-  targetUserId          String?
-  targetRoleId          String?
-  staffReviewChannelId  String?
-  notifyPushover        Boolean          @default(false)
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
-
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  @@map("distribution_settings")
-}

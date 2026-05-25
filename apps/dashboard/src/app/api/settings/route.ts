@@ -48,11 +48,13 @@ export async function PATCH(req: NextRequest) {
     update: {
       ticketAutoCloseHours: parseInt(body.ticketAutoCloseHours) || 48,
       openaiModel: body.openaiModel || "gpt-4o-mini",
+      pushoverAppToken: body.pushoverAppToken || null,
     },
     create: {
       guildId: guild.id,
       ticketAutoCloseHours: parseInt(body.ticketAutoCloseHours) || 48,
       openaiModel: body.openaiModel || "gpt-4o-mini",
+      pushoverAppToken: body.pushoverAppToken || null,
     },
   });
 

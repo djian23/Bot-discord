@@ -54,6 +54,7 @@ export function SettingsForm({ guild }: SettingsFormProps) {
     minAccountAgeDays: String(guild?.minAccountAgeDays ?? 0),
     ticketAutoCloseHours: String(guild?.settings?.ticketAutoCloseHours ?? 48),
     openaiModel: guild?.settings?.openaiModel ?? "gpt-4o-mini",
+    pushoverAppToken: guild?.settings?.pushoverAppToken ?? "",
   });
 
   async function handleSubmit(e: React.FormEvent) {
@@ -125,6 +126,14 @@ export function SettingsForm({ guild }: SettingsFormProps) {
             </select>
           </div>
         </div>
+      </section>
+
+      <section className="bg-discord-darker border border-white/5 rounded-xl p-5 space-y-4">
+        <h2 className="text-sm font-semibold text-white/70 uppercase tracking-wider">Notifications Pushover</h2>
+        <p className="text-xs text-white/40">
+          L'App Token est partagé entre tous les utilisateurs. Chaque user configure son propre User Key dans Mon Espace.
+        </p>
+        <Field label="Pushover App Token" name="pushoverAppToken" type="password" value={form.pushoverAppToken} onChange={set("pushoverAppToken")} placeholder="aXXXXXXXXXXXXXXXXXXXXXX" />
       </section>
 
       <div className="flex items-center gap-3">

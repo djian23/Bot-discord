@@ -35,21 +35,27 @@ export async function sendPushover(
   }
 }
 
+async function getGuildAppToken(): Promise<string | null> {
+  const gs = await prisma.guildSettings.findFirst();
+  return gs?.pushoverAppToken ?? null;
+}
+
 export async function notifyPublicCart(cartId: string) {
-  // Find all users with notifyPublicCarts enabled
+  const appToken = await getGuildAppToken();
+  if (!appToken) return;
+
   const settings = await prisma.notificationSettings.findMany({
-    where: { enabled: true, notifyPublicCarts: true, pushoverUserKey: { not: null }, pushoverAppToken: { not: null } },
+    where: { enabled: true, notifyPublicCarts: true, pushoverUserKey: { not: null } },
     include: { user: true },
   });
   const cart = await prisma.cart.findUnique({ where: { id: cartId }, include: { event: true } });
   if (!cart) return;
 
   for (const s of settings) {
-    // Check quiet hours
     if (isQuietHours(s.quietHoursStart, s.quietHoursEnd)) continue;
     await sendPushover(
       s.pushoverUserKey!,
-      s.pushoverAppToken!,
+      appToken,
       "🔥 New Cart Available",
       `Event: ${cart.event.name}\nPrix: ${cart.price != null ? cart.price + "€" : "—"}\nPAS: ${cart.event.pasText ?? (cart.event.pasAmount ? cart.event.pasAmount + "€ each" : "—")}`,
       { priority: 1 },
@@ -58,14 +64,17 @@ export async function notifyPublicCart(cartId: string) {
 }
 
 export async function notifyTicketCart(userId: string, cartId: string) {
+  const appToken = await getGuildAppToken();
+  if (!appToken) return;
+
   const s = await prisma.notificationSettings.findUnique({ where: { userId } });
-  if (!s?.enabled || !s.notifyTicketCarts || !s.pushoverUserKey || !s.pushoverAppToken) return;
+  if (!s?.enabled || !s.notifyTicketCarts || !s.pushoverUserKey) return;
   if (isQuietHours(s.quietHoursStart, s.quietHoursEnd)) return;
   const cart = await prisma.cart.findUnique({ where: { id: cartId }, include: { event: true } });
   if (!cart) return;
   await sendPushover(
     s.pushoverUserKey,
-    s.pushoverAppToken,
+    appToken,
     "📩 New Cart In Your Ticket",
     `Event: ${cart.event.name}\nPrix: ${cart.price != null ? cart.price + "€" : "—"}`,
     { priority: 1 },

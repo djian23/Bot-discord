@@ -13,15 +13,20 @@ export async function POST() {
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const s = await prisma.notificationSettings.findUnique({ where: { userId: user.id } });
-  if (!s?.pushoverUserKey || !s?.pushoverAppToken) {
-    return NextResponse.json({ error: "Pushover non configuré" }, { status: 400 });
+  if (!s?.pushoverUserKey) {
+    return NextResponse.json({ error: "Pushover User Key non configuré" }, { status: 400 });
+  }
+
+  const guildSettings = await prisma.guildSettings.findFirst();
+  if (!guildSettings?.pushoverAppToken) {
+    return NextResponse.json({ error: "Pushover App Token non configuré par l'admin" }, { status: 400 });
   }
 
   const res = await fetch("https://api.pushover.net/1/messages.json", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      token: s.pushoverAppToken,
+      token: guildSettings.pushoverAppToken,
       user: s.pushoverUserKey,
       title: "🔔 Test Notification",
       message: "Pushover fonctionne correctement !",

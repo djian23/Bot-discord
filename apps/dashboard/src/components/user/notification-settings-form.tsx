@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 
 interface NotifSettings {
   pushoverUserKey?: string | null;
-  pushoverAppToken?: string | null;
   enabled?: boolean;
   notifyPublicCarts?: boolean;
   notifyTicketCarts?: boolean;
@@ -24,7 +23,6 @@ interface Props {
 export function NotificationSettingsForm({ userId, initial }: Props) {
   const [form, setForm] = useState<NotifSettings>({
     pushoverUserKey: initial?.pushoverUserKey ?? "",
-    pushoverAppToken: initial?.pushoverAppToken ?? "",
     enabled: initial?.enabled ?? false,
     notifyPublicCarts: initial?.notifyPublicCarts ?? true,
     notifyTicketCarts: initial?.notifyTicketCarts ?? true,
@@ -92,16 +90,9 @@ export function NotificationSettingsForm({ userId, initial }: Props) {
             className="w-full bg-discord-dark border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-discord-blurple"
           />
         </div>
-        <div>
-          <label className="block text-xs text-white/50 mb-1">Pushover App Token</label>
-          <input
-            type="password"
-            value={form.pushoverAppToken ?? ""}
-            onChange={(e) => setField("pushoverAppToken", e.target.value)}
-            placeholder="aXXXXXXXXXXXXXXXXXXXXXX"
-            className="w-full bg-discord-dark border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-discord-blurple"
-          />
-        </div>
+        <p className="text-xs text-white/30">
+          L'App Token Pushover est configuré par l'administrateur dans les paramètres serveur.
+        </p>
       </div>
 
       {/* Enabled toggle */}
