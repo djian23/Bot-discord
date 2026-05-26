@@ -1,5 +1,6 @@
 /**
  * Standalone Discord server setup script.
+ * Deletes ALL existing channels then rebuilds from template.
  * Run with: node scripts/setup-server.mjs
  * Requires DISCORD_TOKEN and DISCORD_GUILD_ID in .env (root)
  */
@@ -43,6 +44,13 @@ async function api(method, path, body) {
     headers: HEADERS,
     body: body ? JSON.stringify(body) : undefined,
   });
+  if (res.status === 429) {
+    const data = await res.json();
+    const wait = (data.retry_after ?? 1) * 1000 + 200;
+    console.log(`  ⏳ Rate limit — attente ${Math.round(wait / 1000)}s...`);
+    await sleep(wait);
+    return api(method, path, body);
+  }
   if (!res.ok) {
     const err = await res.text();
     throw new Error(`Discord API ${method} ${path} → ${res.status}: ${err}`);
@@ -50,6 +58,8 @@ async function api(method, path, body) {
   if (res.status === 204) return null;
   return res.json();
 }
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ── Server template ────────────────────────────────────────────────────────
 const TEMPLATE = [
@@ -155,93 +165,104 @@ const TEMPLATE = [
   },
 ];
 
-// ── Permission builders ────────────────────────────────────────────────────
-const VIEW = "1024";
-const SEND = "2048";
-const READ_HISTORY = "65536";
+// ── Permission helpers ─────────────────────────────────────────────────────
+const VIEW_PERM = 1024n;
+const SEND_PERM = 2048n;
+const READ_PERM  = 65536n;
 
-function perms(everyoneId, role, isPrivate) {
+function buildPerms(everyoneId, role, isPrivate) {
   if (isPrivate) {
-    // Hidden from @everyone
-    return [{ id: everyoneId, type: 0, deny: VIEW }];
+    return [{ id: everyoneId, type: 0, deny: String(VIEW_PERM) }];
   }
-  if (role === "announcement") {
-    // View + read, no send for everyone
-    return [{ id: everyoneId, type: 0, allow: String(BigInt(VIEW) | BigInt(READ_HISTORY)), deny: SEND }];
+  if (role === "announcement" || role === "readonly") {
+    return [{
+      id: everyoneId,
+      type: 0,
+      allow: String(VIEW_PERM | READ_PERM),
+      deny: String(SEND_PERM),
+    }];
   }
-  if (role === "readonly") {
-    return [{ id: everyoneId, type: 0, allow: String(BigInt(VIEW) | BigInt(READ_HISTORY)), deny: SEND }];
-  }
-  // Default: open channel
+  // Open channel — no overwrite needed (inherits guild defaults)
   return [];
 }
 
-// ── Main ───────────────────────────────────────────────────────────────────
-async function main() {
-  console.log("🔍 Fetching current server channels...");
-  const existing = await api("GET", `/guilds/${GUILD_ID}/channels`);
-  const everyoneId = GUILD_ID; // @everyone role ID = guild ID
+// ── Step 1: Delete all channels ────────────────────────────────────────────
+async function deleteAllChannels() {
+  console.log("🗑️  Récupération des salons existants...");
+  const channels = await api("GET", `/guilds/${GUILD_ID}/channels`);
+  console.log(`   ${channels.length} salon(s) trouvé(s)`);
 
-  const existingByName = new Map();
-  for (const ch of existing) {
-    existingByName.set(ch.name.toLowerCase(), ch);
+  // Delete text channels first, then categories (can't delete non-empty categories)
+  const texts = channels.filter((c) => c.type !== 4);
+  const cats  = channels.filter((c) => c.type === 4);
+
+  console.log("🗑️  Suppression des salons texte...");
+  for (const ch of texts) {
+    try {
+      await api("DELETE", `/channels/${ch.id}`);
+      process.stdout.write(`   ✅ #${ch.name} supprimé\n`);
+      await sleep(350);
+    } catch (err) {
+      process.stdout.write(`   ❌ #${ch.name}: ${err.message}\n`);
+    }
   }
 
+  console.log("🗑️  Suppression des catégories...");
+  for (const ch of cats) {
+    try {
+      await api("DELETE", `/channels/${ch.id}`);
+      process.stdout.write(`   ✅ 📁 ${ch.name} supprimée\n`);
+      await sleep(350);
+    } catch (err) {
+      process.stdout.write(`   ❌ 📁 ${ch.name}: ${err.message}\n`);
+    }
+  }
+}
+
+// ── Step 2: Build server from template ────────────────────────────────────
+async function buildServer() {
+  const everyoneId = GUILD_ID;
   let created = 0;
-  let skipped = 0;
 
   for (const section of TEMPLATE) {
     console.log(`\n📁 ${section.categoryName}`);
 
-    // Create or find category
-    let category = existingByName.get(section.categoryName.toLowerCase());
-    if (!category) {
-      // Try matching just by emoji + name without case sensitivity
-      category = existing.find(
-        (c) => c.type === 4 && c.name.toLowerCase().includes(section.categoryName.toLowerCase().replace(/[^\w\s]/g, "").trim())
-      );
-    }
+    const category = await api("POST", `/guilds/${GUILD_ID}/channels`, {
+      name: section.categoryName,
+      type: 4,
+    });
+    await sleep(400);
 
-    if (!category) {
-      category = await api("POST", `/guilds/${GUILD_ID}/channels`, {
-        name: section.categoryName,
-        type: 4,
-      });
-      console.log(`  ✅ Catégorie créée: ${section.categoryName}`);
-      created++;
-      // Small delay to avoid rate limits
-      await new Promise((r) => setTimeout(r, 300));
-    } else {
-      console.log(`  ⏭️  Catégorie existante: ${category.name}`);
-      skipped++;
-    }
-
-    // Create channels under this category
     for (const ch of section.channels) {
-      const existingCh = existingByName.get(ch.name.toLowerCase());
-      if (existingCh) {
-        process.stdout.write(`  ⏭️  #${ch.name}\n`);
-        skipped++;
-        continue;
-      }
-
       try {
         await api("POST", `/guilds/${GUILD_ID}/channels`, {
           name: ch.name,
           type: 0,
           parent_id: category.id,
-          permission_overwrites: perms(everyoneId, ch.role, ch.private),
+          permission_overwrites: buildPerms(everyoneId, ch.role, ch.private),
         });
-        process.stdout.write(`  ✅ #${ch.name}\n`);
+        process.stdout.write(`   ✅ #${ch.name}\n`);
         created++;
-        await new Promise((r) => setTimeout(r, 300));
+        await sleep(350);
       } catch (err) {
-        process.stdout.write(`  ❌ #${ch.name}: ${err.message}\n`);
+        process.stdout.write(`   ❌ #${ch.name}: ${err.message}\n`);
       }
     }
   }
 
-  console.log(`\n🎉 Terminé — ${created} créés, ${skipped} ignorés (déjà existants)`);
+  return created;
+}
+
+// ── Main ───────────────────────────────────────────────────────────────────
+async function main() {
+  console.log("🚀 Discord Server Setup — RESET COMPLET\n");
+
+  await deleteAllChannels();
+
+  console.log("\n🏗️  Construction de la nouvelle structure...");
+  const created = await buildServer();
+
+  console.log(`\n🎉 Terminé — ${created} salons créés`);
 }
 
 main().catch((err) => {
