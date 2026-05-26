@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { getSessionUser } from "@/lib/session";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@discord-manager/database";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if (!["BOSS", "ADMIN", "STAFF"].includes((session?.user as any)?.role)) {
+  if (!["BOSS", "ADMIN", "STAFF"].includes(getSessionUser(session)?.role ?? "")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

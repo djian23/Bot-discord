@@ -4,19 +4,13 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@discord-manager/database";
 import botApi from "@/lib/botApi";
 import { generateWtsMessage } from "@discord-manager/shared";
-
-async function getAuthedUser(session: Awaited<ReturnType<typeof getServerSession>>) {
-  if (!session) return null;
-  return prisma.user.findUnique({
-    where: { discordId: (session.user as any)?.discordId ?? "" },
-  });
-}
+import { getAuthedDbUser } from "@/lib/session";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const user = await getAuthedUser(session);
+  const user = await getAuthedDbUser(session);
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const listing = await prisma.listing.findUnique({ where: { id: params.id } });
@@ -97,7 +91,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const user = await getAuthedUser(session);
+  const user = await getAuthedDbUser(session);
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const listing = await prisma.listing.findUnique({ where: { id: params.id } });

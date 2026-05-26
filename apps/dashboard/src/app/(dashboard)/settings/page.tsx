@@ -1,12 +1,13 @@
 import { prisma } from "@discord-manager/database";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getSessionUser } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { SettingsForm } from "@/components/forms/settings-form";
 
 export default async function SettingsPage() {
   const session = await getServerSession(authOptions);
-  if (!["BOSS", "ADMIN"].includes((session?.user as any)?.role)) redirect("/overview");
+  if (!["BOSS", "ADMIN"].includes(getSessionUser(session)?.role ?? "")) redirect("/overview");
 
   const guild = await prisma.guild.findUnique({
     where: { discordId: process.env.DISCORD_GUILD_ID! },

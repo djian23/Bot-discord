@@ -1,6 +1,9 @@
 import "dotenv/config";
+import { validateEnv } from "./utils/validateEnv";
 import { BotClient } from "./client";
 import { startApiServer } from "./api/server";
+
+validateEnv();
 
 async function main() {
   const client = new BotClient();

@@ -12,10 +12,15 @@ export async function processClaim(interaction: ButtonInteraction, client: BotCl
   const guildRecord = await prisma.guild.findUnique({ where: { discordId: interaction.guildId! } });
   if (!guildRecord) return interaction.editReply("❌ Serveur non configuré.");
 
-  // Load cart
+  // Load cart for preliminary checks
   const cart = await prisma.cart.findUnique({ where: { id: cartId }, include: { event: true } });
   if (!cart) return interaction.editReply("❌ Cart introuvable.");
   if (cart.status !== "AVAILABLE") return interaction.editReply("❌ Ce cart n'est plus disponible.");
+
+  // Check expiration
+  if (cart.expirationAt && cart.expirationAt < new Date()) {
+    return interaction.editReply("❌ Ce cart a expiré.");
+  }
 
   // Load or create user
   let user = await prisma.user.findUnique({ where: { discordId: member.id } });
@@ -30,17 +35,14 @@ export async function processClaim(interaction: ButtonInteraction, client: BotCl
     });
   }
 
-  // Blacklist check
   if (user.isBlacklisted) {
     return interaction.editReply("❌ Tu es blacklisté et ne peux pas claim.");
   }
 
-  // Role check
   if (cart.event.allowedRoleId && !member.roles.cache.has(cart.event.allowedRoleId)) {
     return interaction.editReply("❌ Tu n'as pas le rôle requis pour claim cet event.");
   }
 
-  // Daily limit check
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayClaims = await prisma.claim.count({
@@ -50,7 +52,6 @@ export async function processClaim(interaction: ButtonInteraction, client: BotCl
     return interaction.editReply(`❌ Limite de ${user.maxClaimsPerDay} claims/jour atteinte.`);
   }
 
-  // Cooldown check
   if (guildRecord.claimCooldownSeconds > 0 && user.lastClaimAt) {
     const elapsed = (Date.now() - user.lastClaimAt.getTime()) / 1000;
     if (elapsed < guildRecord.claimCooldownSeconds) {
@@ -59,8 +60,14 @@ export async function processClaim(interaction: ButtonInteraction, client: BotCl
     }
   }
 
-  // Mark cart as claimed
-  await prisma.cart.update({ where: { id: cartId }, data: { status: "CLAIMED", claimedById: user.id } });
+  // Atomic claim — prevents race condition between concurrent claims
+  const claimed = await prisma.cart.updateMany({
+    where: { id: cartId, status: "AVAILABLE" },
+    data: { status: "CLAIMED", claimedById: user.id },
+  });
+  if (claimed.count === 0) {
+    return interaction.editReply("❌ Ce cart vient d'être claim par quelqu'un d'autre.");
+  }
 
   // Get or create ticket
   const { ticket, channel } = await getOrCreateTicket(client, member, cart);
@@ -81,7 +88,6 @@ export async function processClaim(interaction: ButtonInteraction, client: BotCl
     data: { claimsCount: { increment: 1 }, lastClaimAt: new Date() },
   });
 
-  // Log
   await prisma.log.create({
     data: {
       guildId: guildRecord.id,

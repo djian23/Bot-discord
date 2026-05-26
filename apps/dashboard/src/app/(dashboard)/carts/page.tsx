@@ -1,6 +1,7 @@
 import { prisma } from "@discord-manager/database";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getSessionUser } from "@/lib/session";
 import { CartsTable } from "@/components/dashboard/carts-table";
 import { ExportButton } from "@/components/ui/export-button";
 
@@ -12,7 +13,7 @@ interface CartsPageProps {
 
 export default async function CartsPage({ searchParams }: CartsPageProps) {
   const session = await getServerSession(authOptions);
-  const userRole = (session?.user as any)?.role ?? "STAFF";
+  const userRole = getSessionUser(session)?.role ?? "STAFF";
 
   const status = searchParams.status && searchParams.status !== "ALL" ? searchParams.status : undefined;
   const eventId = searchParams.event || undefined;

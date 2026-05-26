@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { getSessionUser } from "@/lib/session";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@discord-manager/database";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if (!["BOSS", "ADMIN", "STAFF"].includes((session?.user as any)?.role)) {
+  if (!["BOSS", "ADMIN", "STAFF"].includes(getSessionUser(session)?.role ?? "")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -29,7 +30,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if (!["BOSS", "ADMIN", "STAFF"].includes((session?.user as any)?.role)) {
+  if (!["BOSS", "ADMIN", "STAFF"].includes(getSessionUser(session)?.role ?? "")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -62,7 +63,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     if (action === "add_note" && note) {
       const actor = await prisma.user.findUnique({
-        where: { discordId: (session?.user as any)?.discordId },
+        where: { discordId: getSessionUser(session)?.discordId },
         select: { id: true },
       });
       await prisma.staffNote.create({ data: { userId: params.id, authorId: actor!.id, content: note } });

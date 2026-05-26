@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getSessionUser } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { prisma } from "@discord-manager/database";
 import { formatDistanceToNow } from "date-fns";
@@ -19,7 +20,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default async function MyListingsPage() {
   const session = await getServerSession(authOptions);
   const user = await prisma.user.findUnique({
-    where: { discordId: (session?.user as any)?.discordId ?? "" },
+    where: { discordId: getSessionUser(session)?.discordId ?? "" },
   });
   if (!user) redirect("/my");
 

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { getSessionUser } from "@/lib/session";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@discord-manager/database";
 import botApi from "@/lib/botApi";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  const role = (session?.user as any)?.role;
+  const role = getSessionUser(session)?.role ?? "";
   if (!["BOSS", "ADMIN", "STAFF"].includes(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
   }
 
   const guild = await prisma.guild.findUnique({ where: { discordId: process.env.DISCORD_GUILD_ID! } });
-  const user = await prisma.user.findUnique({ where: { discordId: (session?.user as any)?.discordId } });
+  const user = await prisma.user.findUnique({ where: { discordId: getSessionUser(session)?.discordId } });
 
   if (!guild || !user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 

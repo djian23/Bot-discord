@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getSessionUser } from "@/lib/session";
 import { prisma } from "@discord-manager/database";
 
 export async function PATCH(req: NextRequest) {
@@ -8,7 +9,7 @@ export async function PATCH(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const user = await prisma.user.findUnique({
-    where: { discordId: (session.user as any)?.discordId ?? "" },
+    where: { discordId: getSessionUser(session)?.discordId ?? "" },
   });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 

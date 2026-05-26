@@ -1,13 +1,14 @@
 import { prisma } from "@discord-manager/database";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getSessionUser } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { AiSettingsForm } from "@/components/ai/ai-settings-form";
 import { AiLogsTable } from "@/components/ai/ai-logs-table";
 
 export default async function AiSettingsPage() {
   const session = await getServerSession(authOptions);
-  if (!["BOSS", "ADMIN"].includes((session?.user as any)?.role)) {
+  if (!["BOSS", "ADMIN"].includes(getSessionUser(session)?.role ?? "")) {
     redirect("/overview");
   }
 

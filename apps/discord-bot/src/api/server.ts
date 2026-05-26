@@ -14,9 +14,19 @@ import {
   getServerStatus,
 } from "../services/serverBuilderService";
 
+const BOT_SECRET = process.env.BOT_API_SECRET;
+
+function fisherYates<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j]!, a[i]!];
+  }
+  return a;
+}
+
 function authMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
-  const secret = req.headers["x-bot-secret"];
-  if (secret !== process.env.BOT_API_SECRET) {
+  if (!BOT_SECRET || req.headers["x-bot-secret"] !== BOT_SECRET) {
     return res.status(401).json({ error: "Unauthorized" });
   }
   next();
@@ -49,20 +59,32 @@ export async function startApiServer(client: BotClient) {
 
   // Cart expire
   app.post("/carts/:id/expire", async (req, res) => {
-    await expireCart(client, req.params.id);
-    res.json({ ok: true });
+    try {
+      await expireCart(client, req.params.id);
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   // Ticket close
   app.post("/tickets/:id/close", async (req, res) => {
-    await closeTicket(client, req.params.id, req.body.closedById ?? "dashboard");
-    res.json({ ok: true });
+    try {
+      await closeTicket(client, req.params.id, req.body.closedById ?? "dashboard");
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   // Send announcement
   app.post("/announcements/:id/send", async (req, res) => {
-    await sendAnnouncement(client, req.params.id);
-    res.json({ ok: true });
+    try {
+      await sendAnnouncement(client, req.params.id);
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   // Create giveaway from dashboard
@@ -129,7 +151,7 @@ export async function startApiServer(client: BotClient) {
       });
       if (!giveaway) return res.status(404).json({ error: "Not found" });
 
-      const shuffled = giveaway.entries.sort(() => Math.random() - 0.5);
+      const shuffled = fisherYates(giveaway.entries);
       const winners = shuffled.slice(0, giveaway.winnersCount);
       for (const w of winners) {
         await prisma.giveawayWinner.create({ data: { giveawayId: giveaway.id, userId: w.userId } }).catch(() => {});
@@ -157,7 +179,7 @@ export async function startApiServer(client: BotClient) {
       });
       if (!giveaway) return res.status(404).json({ error: "Not found" });
 
-      const shuffled = giveaway.entries.sort(() => Math.random() - 0.5);
+      const shuffled = fisherYates(giveaway.entries);
       const winners = shuffled.slice(0, giveaway.winnersCount);
       for (const w of winners) {
         await prisma.giveawayWinner.create({ data: { giveawayId: giveaway.id, userId: w.userId } }).catch(() => {});

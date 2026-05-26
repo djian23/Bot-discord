@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { getSessionUser } from "@/lib/session";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@discord-manager/database";
 
@@ -12,7 +13,7 @@ async function getGuild() {
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!["BOSS", "ADMIN"].includes((session?.user as any)?.role)) {
+  if (!["BOSS", "ADMIN"].includes(getSessionUser(session)?.role ?? "")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -26,7 +27,7 @@ export async function GET() {
 
 export async function PATCH(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!["BOSS", "ADMIN"].includes((session?.user as any)?.role)) {
+  if (!["BOSS", "ADMIN"].includes(getSessionUser(session)?.role ?? "")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

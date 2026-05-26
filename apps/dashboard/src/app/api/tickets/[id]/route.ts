@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { getSessionUser } from "@/lib/session";
 import { authOptions } from "@/lib/auth";
 import botApi from "@/lib/botApi";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if (!["BOSS", "ADMIN", "STAFF"].includes((session?.user as any)?.role)) {
+  if (!["BOSS", "ADMIN", "STAFF"].includes(getSessionUser(session)?.role ?? "")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   if (action === "close") {
     await botApi.post(`/tickets/${params.id}/close`, {
-      closedById: (session?.user as any)?.id ?? "dashboard",
+      closedById: getSessionUser(session)?.discordId ?? "dashboard",
     });
     return NextResponse.json({ ok: true });
   }

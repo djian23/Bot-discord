@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getSessionUser } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { prisma } from "@discord-manager/database";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -8,7 +9,7 @@ import { ShoppingCart, DollarSign, XCircle, TrendingUp } from "lucide-react";
 export default async function MyStatsPage() {
   const session = await getServerSession(authOptions);
   const user = await prisma.user.findUnique({
-    where: { discordId: (session?.user as any)?.discordId ?? "" },
+    where: { discordId: getSessionUser(session)?.discordId ?? "" },
   });
   if (!user) redirect("/my");
 

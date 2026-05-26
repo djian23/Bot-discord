@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getSessionUser } from "@/lib/session";
 import { prisma } from "@discord-manager/database";
 import botApi from "@/lib/botApi";
 import { generateWtsMessage } from "@discord-manager/shared";
@@ -10,7 +11,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const user = await prisma.user.findUnique({
-    where: { discordId: (session.user as any)?.discordId ?? "" },
+    where: { discordId: getSessionUser(session)?.discordId ?? "" },
   });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const user = await prisma.user.findUnique({
-    where: { discordId: (session.user as any)?.discordId ?? "" },
+    where: { discordId: getSessionUser(session)?.discordId ?? "" },
   });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
